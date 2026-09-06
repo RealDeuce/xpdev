@@ -19,6 +19,13 @@ Optional audio backends can be disabled at configure time with the
 `WITHOUT_ALSA`, `WITHOUT_COREAUDIO`, `WITHOUT_OSS`, `WITHOUT_PIPEWIRE`,
 `WITHOUT_PORTAUDIO`, `WITHOUT_PULSEAUDIO`, and `WITHOUT_SDL_AUDIO` options.
 
+## License
+
+xpdev is distributed under the GNU Library General Public License, version 2
+or (at your option) any later version (`LGPL-2.0-or-later`). See [LICENSE](LICENSE).
+Some imported source files carry separate permissive license notices in their
+file headers.
+
 ## Upstream synchronization
 
 The [upstream sync workflow](.github/workflows/sync-upstream.yml) runs every six
