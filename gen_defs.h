@@ -22,6 +22,8 @@
 #ifndef _GEN_DEFS_H
 #define _GEN_DEFS_H
 
+#include "xpdev_config.h"
+
 #if (__STDC_VERSION__ >= 199901L) || (__cplusplus >= 201103L)
 # ifndef HAS_INTTYPES_H
 #  define HAS_INTTYPES_H

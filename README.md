@@ -32,7 +32,24 @@ target_link_libraries(my_program PRIVATE xpdev::xpdev)
 ```
 
 Public headers are installed under `include/xpdev` and can be included as, for
-example, `#include <xpdev/genwrap.h>`.
+example, `#include <xpdev/genwrap.h>`. They automatically include the generated
+`xpdev_config.h` where needed, preserving the feature macros used to compile the
+library. The header also provides stable `XPDEV_*` capability macros.
+
+The installed CMake package exposes the same configuration through variables
+such as `xpdev_AUDIO_ENABLED`, `xpdev_AUDIO_BACKENDS`, `xpdev_HAS_STDINT_H`, and
+per-backend variables such as `xpdev_WITH_ALSA`. An application that requires
+at least one audio backend can request the `audio` component:
+
+```cmake
+find_package(xpdev QUIET COMPONENTS audio)
+if(NOT xpdev_FOUND)
+	# A FetchContent fallback can be declared here.
+endif()
+```
+
+An audio-component mismatch is reported before installed targets are imported,
+so a fallback can create the normal xpdev target names without collisions.
 
 ## License
 
