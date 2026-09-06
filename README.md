@@ -41,6 +41,8 @@ hidden by default on supported compilers: only declarations marked
 `DLLEXPORT` are public, so implementation globals are not part of the ABI.
 Compatibility shims are exported only on systems where xpdev supplies their
 implementation; native platform functions are imported from the platform.
+XPDev-specific portability extensions use the `xp_` prefix so they do not
+occupy libc, pthread, curses, or other platform namespaces.
 
 When adding API in an ABI-compatible 1.x release, add its exact symbol names to
 a new node in `cmake/xpdev.map` that inherits from `XPDEV_1.0`; existing symbols

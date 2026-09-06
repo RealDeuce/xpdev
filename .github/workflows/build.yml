@@ -35,3 +35,66 @@ jobs:
 
       - name: Verify symbol versions
         run: ./.github/scripts/check-symbol-versions.sh build/libxpdev.so
+
+  native-library-metadata:
+    name: Native library metadata (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Configure
+        run: >-
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=Release
+          -DWITHOUT_ALSA=ON
+          -DWITHOUT_COREAUDIO=ON
+          -DWITHOUT_OSS=ON
+          -DWITHOUT_PIPEWIRE=ON
+          -DWITHOUT_PORTAUDIO=ON
+          -DWITHOUT_PULSEAUDIO=ON
+          -DWITHOUT_SDL_AUDIO=ON
+
+      - name: Build shared library
+        run: cmake --build build --config Release --target xpdev_shared_library
+
+      - name: Verify Mach-O metadata and exports
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          dylib="$(find build -name 'libxpdev.1.dylib' -print -quit)"
+          test -n "$dylib"
+          otool -D "$dylib" | grep -q 'libxpdev\.1\.dylib'
+          otool -L "$dylib" \
+            | grep -q 'compatibility version 1\.0\.0, current version 1\.0\.0'
+          ! nm -gjU "$dylib" \
+            | grep -E '^_(getch|globi|kbhit|msclock|pthread_.*|sem_trywait_block|unix_beep|alsa_api|init_sdl_audio|pa_api|pu_api|sdl_fillbuf|xp_mixer_pull|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$'
+
+      - name: Verify PE filename and exports
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $dll = Get-ChildItem build -Recurse -File -Filter 'xpdev-1.dll' |
+            Select-Object -First 1
+          if (-not $dll) { throw 'xpdev-1.dll was not produced' }
+
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $install = & $vswhere -latest -products * `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+            -property installationPath
+          $vcvars = Join-Path $install 'VC\Auxiliary\Build\vcvars64.bat'
+          $exports = cmd.exe /d /s /c "`"$vcvars`" >nul && dumpbin /nologo /exports `"$($dll.FullName)`""
+          if ($LASTEXITCODE -ne 0) { throw 'dumpbin failed' }
+          $exportText = $exports -join "`n"
+          if ($exportText -notmatch '\sxp_pthread_mutex_init\s') {
+            throw 'expected XPDev exports were not found'
+          }
+          if ($exportText -match '\s(alsa_api|getch|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_mutex_init_np|pthread_mutex_initializer_np|pu_api|sdl_fillbuf|sem_trywait_block|unix_beep|xp_mixer_pull|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)\s') {
+            throw "internal or legacy implementation symbol was exported: $($Matches[1])"
+          }
