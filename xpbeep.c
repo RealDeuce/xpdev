@@ -324,9 +324,8 @@ static SDL_sem *             sdlToneDone;
  * identically on MinGW-w64 and MSVC. */
 static const GUID xp_wasapi_ks_subtype_pcm = { STATIC_KSDATAFORMAT_SUBTYPE_PCM };
 
-/* COM function-import libs (ole32 for CoInitializeEx / CoCreateInstance /
- * CoUninitialize) are declared alongside the other xpdev-MT Win32 libs
- * in xpdev_mt.props (MSVC) and xpdev/Common.gmake (MinGW).
+/* CMake links the COM function-import libs (ole32 for CoInitializeEx /
+ * CoCreateInstance / CoUninitialize) with the other xpdev Win32 libraries.
  *
  * GUID storage varies by toolchain:
  *   - MinGW-w64's <mmdeviceapi.h> and <audioclient.h> already call

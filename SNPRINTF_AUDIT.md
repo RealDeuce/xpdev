@@ -13,8 +13,7 @@ return value** to `size - 1` on truncation. C99 says `snprintf()` returns the
 length the string *would* have been — which is the only thing that makes a
 truncation check possible. So in most of Synchronet, the return value cannot
 tell you that truncation happened, and never tells you how much was needed.
-`USE_SNPRINTF` *is* defined for **darwin and freebsd** (`Common.gmake`), and
-sbbs3 inherits it (`sbbs3/GNUmakefile:163` picks up `$(XPDEV-MT_CFLAGS)`).
+`USE_SNPRINTF` *is* defined for **Darwin and FreeBSD** by `CMakeLists.txt`.
 The result: **the same line of code has different semantics per platform.**
 
 | platform | `USE_SNPRINTF` | `snprintf` resolves to | return on truncation |

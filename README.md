@@ -6,6 +6,19 @@ split`, so commits that changed the xpdev subtree retain their original authors,
 dates, messages, and ancestry, with `src/xpdev` relocated to this repository's
 root.
 
+## Building
+
+CMake is the only supported build system:
+
+```sh
+cmake -S . -B build
+cmake --build build
+```
+
+Optional audio backends can be disabled at configure time with the
+`WITHOUT_ALSA`, `WITHOUT_COREAUDIO`, `WITHOUT_OSS`, `WITHOUT_PIPEWIRE`,
+`WITHOUT_PORTAUDIO`, `WITHOUT_PULSEAUDIO`, and `WITHOUT_SDL_AUDIO` options.
+
 ## Upstream synchronization
 
 The [upstream sync workflow](.github/workflows/sync-upstream.yml) runs every six
