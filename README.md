@@ -1,10 +1,15 @@
 # xpdev
 
-This is a standalone mirror of [`src/xpdev`](https://github.com/SynchronetBBS/sbbs/tree/master/src/xpdev)
-from the Synchronet source repository. Its history was produced with `git subtree
-split`, so commits that changed the xpdev subtree retain their original authors,
-dates, messages, and ancestry, with `src/xpdev` relocated to this repository's
-root.
+This is a standalone mirror of selected libraries from the Synchronet source
+repository. [`src/xpdev`](https://github.com/SynchronetBBS/sbbs/tree/master/src/xpdev)
+is located at the repository root, while `src/comio`, `src/hash`, and
+`src/encode` are mirrored into the matching `comio`, `hash`, and `encode`
+subdirectories.
+
+The imported histories retain their original authors, dates, messages, and
+ancestry. The GPL-licensed uuencode and yEnc implementations are excluded from
+every imported `encode` revision, so neither their files nor their historical
+blobs are reachable from this repository.
 
 ## Building
 
@@ -71,18 +76,21 @@ so a fallback can create the normal xpdev target names without collisions.
 
 ## License
 
-xpdev is distributed under the GNU Library General Public License, version 2
-or (at your option) any later version (`LGPL-2.0-or-later`). See [LICENSE](LICENSE).
-Some imported source files carry separate permissive license notices in their
-file headers.
+The included libraries are distributed under the GNU Library General Public
+License, version 2 or (at your option) any later version
+(`LGPL-2.0-or-later`). See [LICENSE](LICENSE). Some imported source files carry
+separate permissive license notices in their file headers. Synchronet's
+GPL-licensed `uucode` and `yenc` sources are intentionally not part of this
+repository.
 
 ## Upstream synchronization
 
 The [upstream sync workflow](.github/workflows/sync-upstream.yml) runs every six
 hours and can also be started manually. It fetches only `master` from
-`SynchronetBBS/sbbs`, projects `src/xpdev` with the same `git subtree split`
-operation used to create this repository, and merges new projected commits into
-`main`.
+`SynchronetBBS/sbbs`. It projects `src/xpdev` to the repository root with
+`git subtree split`, and projects `src/comio`, `src/hash`, and the LGPL portion
+of `src/encode` into their subdirectories with `git-filter-repo`. New projected
+commits are merged into `main` with their full history.
 
 Clean merges are pushed automatically. A content conflict, changed/missing
 upstream path, fetch error, or rejected push fails the Actions job instead of
@@ -92,6 +100,7 @@ under the repository's Actions settings so the job can push.
 To run the integration locally from a clean checkout:
 
 ```sh
+pipx install git-filter-repo==2.47.0
 ./.github/scripts/sync-upstream.sh
 ```
 

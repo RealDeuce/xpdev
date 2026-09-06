@@ -9,16 +9,13 @@ set(SOURCE
 	hex.c
 	lzh.c
 	utf8.c
-	uucode.c
-	yenc.c
 )
 
 set(HEADER
 	base64.h
+	hex.h
 	lzh.h
 	utf8.h
-	uucode.h
-	yenc.h
 )
 
 add_library(encode OBJECT ${SOURCE})

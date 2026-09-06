@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   sync:
-    name: Integrate src/xpdev
+    name: Integrate xpdev, comio, hash, and encode
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -29,6 +29,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Install history projection tool
+        run: pipx install git-filter-repo==2.47.0
 
       - name: Fetch, project, and merge upstream
         run: ./.github/scripts/sync-upstream.sh
