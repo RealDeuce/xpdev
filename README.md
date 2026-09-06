@@ -13,11 +13,26 @@ CMake is the only supported build system:
 ```sh
 cmake -S . -B build
 cmake --build build
+cmake --install build
 ```
 
 Optional audio backends can be disabled at configure time with the
 `WITHOUT_ALSA`, `WITHOUT_COREAUDIO`, `WITHOUT_OSS`, `WITHOUT_PIPEWIRE`,
 `WITHOUT_PORTAUDIO`, `WITHOUT_PULSEAUDIO`, and `WITHOUT_SDL_AUDIO` options.
+Use `cmake --install build --prefix <path>` to override the platform's default
+installation prefix.
+
+The default build and install provide both static and shared libraries. CMake
+consumers can select `xpdev::static` or `xpdev::shared`; `xpdev::xpdev` selects
+the shared library:
+
+```cmake
+find_package(xpdev CONFIG REQUIRED)
+target_link_libraries(my_program PRIVATE xpdev::xpdev)
+```
+
+Public headers are installed under `include/xpdev` and can be included as, for
+example, `#include <xpdev/genwrap.h>`.
 
 ## License
 
