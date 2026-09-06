@@ -33,5 +33,23 @@ jobs:
       - name: Fetch, project, and merge upstream
         run: ./.github/scripts/sync-upstream.sh
 
+      - name: Configure merged source
+        run: >-
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=Release
+          -DWITHOUT_ALSA=ON
+          -DWITHOUT_COREAUDIO=ON
+          -DWITHOUT_OSS=ON
+          -DWITHOUT_PIPEWIRE=ON
+          -DWITHOUT_PORTAUDIO=ON
+          -DWITHOUT_PULSEAUDIO=ON
+          -DWITHOUT_SDL_AUDIO=ON
+
+      - name: Build merged shared library
+        run: cmake --build build --config Release --target xpdev_shared_library
+
+      - name: Verify merged symbol versions
+        run: ./.github/scripts/check-symbol-versions.sh build/libxpdev.so
+
       - name: Push integrated history
         run: git push origin "HEAD:${{ github.event.repository.default_branch }}"

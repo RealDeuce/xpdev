@@ -34,6 +34,18 @@ target_link_libraries(my_program PRIVATE xpdev::xpdev)
 The shared library uses ABI SONAME 1. Its release filename is versioned as
 `libxpdev.so.1.0` on ELF platforms, with the usual `libxpdev.so.1` SONAME and
 `libxpdev.so` development symlinks. ABI-compatible 1.x releases retain SONAME 1.
+All ELF exports carry the `XPDEV_1.0` symbol version. On macOS, CMake records
+compatibility version 1 and current version 1.0 in the dylib; on Windows, the
+ABI major is part of the `xpdev-1.dll` filename. Shared-library visibility is
+hidden by default on supported compilers: only declarations marked
+`DLLEXPORT` are public, so implementation globals are not part of the ABI.
+Compatibility shims are exported only on systems where xpdev supplies their
+implementation; native platform functions are imported from the platform.
+
+When adding API in an ABI-compatible 1.x release, add its exact symbol names to
+a new node in `cmake/xpdev.map` that inherits from `XPDEV_1.0`; existing symbols
+remain at their original versions. CI rejects ELF libraries that expose any
+defined dynamic symbol without an `XPDEV_*` version.
 
 Public headers are installed under `include/xpdev` and can be included as, for
 example, `#include <xpdev/genwrap.h>`. They automatically include the generated

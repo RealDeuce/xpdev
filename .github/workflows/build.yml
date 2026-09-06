@@ -1,0 +1,37 @@
+name: Build and ABI checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  elf-symbol-versions:
+    name: ELF symbol versions
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Configure
+        run: >-
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=Release
+          -DWITHOUT_ALSA=ON
+          -DWITHOUT_COREAUDIO=ON
+          -DWITHOUT_OSS=ON
+          -DWITHOUT_PIPEWIRE=ON
+          -DWITHOUT_PORTAUDIO=ON
+          -DWITHOUT_PULSEAUDIO=ON
+          -DWITHOUT_SDL_AUDIO=ON
+
+      - name: Build shared library
+        run: cmake --build build --config Release --target xpdev_shared_library
+
+      - name: Verify symbol versions
+        run: ./.github/scripts/check-symbol-versions.sh build/libxpdev.so
