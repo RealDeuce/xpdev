@@ -1,0 +1,31 @@
+EXPORTS
+	MD5_calc
+	MD5_close
+	MD5_digest
+	MD5_hex
+	MD5_open
+	SHA1Final
+	SHA1Init
+	SHA1Transform
+	SHA1Update
+	SHA1_calc
+	SHA1_hex
+	SHA256Final
+	SHA256Init
+	SHA256Update
+	SHA256_calc
+	SHA256_hex
+	crc16
+	crc16tbl DATA
+	crc32_update
+	crc32i
+	crc32tbl DATA
+	crc32tbl_slicing DATA
+	fcrc32
+	fnv1a32
+	fnv1a32_str
+	fnv1a32_update
+	fnv1a64
+	fnv1a64_str
+	fnv1a64_update
+	icrc16

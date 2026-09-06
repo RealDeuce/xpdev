@@ -48,11 +48,15 @@ jobs:
           -DWITHOUT_PULSEAUDIO=ON
           -DWITHOUT_SDL_AUDIO=ON
 
-      - name: Build merged shared library
-        run: cmake --build build --config Release --target xpdev_shared_library
+      - name: Build merged libraries
+        run: cmake --build build --config Release
 
       - name: Verify merged symbol versions
-        run: ./.github/scripts/check-symbol-versions.sh build/libxpdev.so
+        run: |
+          ./.github/scripts/check-symbol-versions.sh build/libxpdev.so XPDEV_1.0
+          ./.github/scripts/check-symbol-versions.sh build/comio/libxpdev-comio.so XPDEV_COMIO_1.0
+          ./.github/scripts/check-symbol-versions.sh build/hash/libxpdev-hash.so XPDEV_HASH_1.0
+          ./.github/scripts/check-symbol-versions.sh build/encode/libxpdev-encode.so XPDEV_ENCODE_1.0
 
       - name: Push integrated history
         run: git push origin "HEAD:${{ github.event.repository.default_branch }}"

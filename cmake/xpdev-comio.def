@@ -1,0 +1,25 @@
+EXPORTS
+	comClose
+	comDrainOutput
+	comGetBaudRate
+	comGetBaudRates
+	comGetFlowControl
+	comGetModemStatus
+	comLowerDTR
+	comLowerRTS
+	comOpen
+	comPurgeInput
+	comPurgeOutput
+	comRaiseDTR
+	comRaiseRTS
+	comReadBuf
+	comReadByte
+	comReadLine
+	comSetBaudRate
+	comSetBits
+	comSetFlowControl
+	comSetParity
+	comVersion
+	comWriteBuf
+	comWriteByte
+	comWriteString

@@ -23,15 +23,16 @@
 #define _CRC16_H_
 
 #include "gen_defs.h"
+#include "hash_export.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern uint16_t crc16tbl[];
+extern XPDEV_HASH_EXPORT uint16_t crc16tbl[];
 
-uint16_t crc16(const char* data, size_t len);
-uint16_t icrc16(uint16_t crc, const char* data, size_t len);
+XPDEV_HASH_EXPORT uint16_t crc16(const char* data, size_t len);
+XPDEV_HASH_EXPORT uint16_t icrc16(uint16_t crc, const char* data, size_t len);
 
 #ifdef __cplusplus
 }

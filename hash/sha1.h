@@ -9,6 +9,7 @@
 
 #include <stddef.h>     /* size_t */
 #include <gen_defs.h>   /* uint32_t */
+#include "hash_export.h"
 
 #define SHA1_DIGEST_SIZE 20
 
@@ -23,32 +24,32 @@ typedef struct
 extern "C" {
 #endif
 
-void SHA1Transform(
+XPDEV_HASH_EXPORT void SHA1Transform(
 	uint32_t state[5],
 	const uint8_t buffer[64]
 	);
 
-void SHA1Init(
+XPDEV_HASH_EXPORT void SHA1Init(
 	SHA1_CTX * context
 	);
 
-void SHA1Update(
+XPDEV_HASH_EXPORT void SHA1Update(
 	SHA1_CTX * context,
 	const void * data,
 	size_t len
 	);
 
-void SHA1Final(
+XPDEV_HASH_EXPORT void SHA1Final(
 	SHA1_CTX * context,
 	uint8_t digest[SHA1_DIGEST_SIZE]
 	);
 
-void SHA1_calc(
+XPDEV_HASH_EXPORT void SHA1_calc(
 	uint8_t *hash_out,
 	const void *str,
 	size_t len);
 
-char* SHA1_hex(char* to, const uint8_t digest[SHA1_DIGEST_SIZE]);
+XPDEV_HASH_EXPORT char* SHA1_hex(char* to, const uint8_t digest[SHA1_DIGEST_SIZE]);
 
 #ifdef __cplusplus
 }

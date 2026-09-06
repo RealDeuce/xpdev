@@ -9,6 +9,7 @@
 
 #include <stddef.h>     /* size_t */
 #include <stdint.h>     /* uint32_t / uint64_t / uint8_t */
+#include "hash_export.h"
 
 #define SHA256_DIGEST_SIZE 32
 #define SHA256_BLOCK_SIZE  64
@@ -23,12 +24,12 @@ typedef struct {
 extern "C" {
 #endif
 
-void SHA256Init(SHA256_CTX *ctx);
-void SHA256Update(SHA256_CTX *ctx, const void *data, size_t len);
-void SHA256Final(SHA256_CTX *ctx, uint8_t digest[SHA256_DIGEST_SIZE]);
+XPDEV_HASH_EXPORT void SHA256Init(SHA256_CTX *ctx);
+XPDEV_HASH_EXPORT void SHA256Update(SHA256_CTX *ctx, const void *data, size_t len);
+XPDEV_HASH_EXPORT void SHA256Final(SHA256_CTX *ctx, uint8_t digest[SHA256_DIGEST_SIZE]);
 
-void SHA256_calc(uint8_t *hash_out, const void *data, size_t len);
-char *SHA256_hex(char *to, const uint8_t digest[SHA256_DIGEST_SIZE]);
+XPDEV_HASH_EXPORT void SHA256_calc(uint8_t *hash_out, const void *data, size_t len);
+XPDEV_HASH_EXPORT char *SHA256_hex(char *to, const uint8_t digest[SHA256_DIGEST_SIZE]);
 
 #ifdef __cplusplus
 }

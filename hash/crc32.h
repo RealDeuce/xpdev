@@ -24,17 +24,18 @@
 
 #include <stdio.h>  /* FILE */
 #include "gen_defs.h"   /* uint32_t */
+#include "hash_export.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern int32_t crc32tbl[];
-extern const uint32_t crc32tbl_slicing[3][256];
+extern XPDEV_HASH_EXPORT int32_t crc32tbl[];
+extern XPDEV_HASH_EXPORT const uint32_t crc32tbl_slicing[3][256];
 
-uint32_t crc32_update(uint32_t crc, const void* buf, size_t);
-uint32_t crc32i(uint32_t crc, const char* buf, size_t);
-uint32_t fcrc32(FILE* fp, size_t);
+XPDEV_HASH_EXPORT uint32_t crc32_update(uint32_t crc, const void* buf, size_t);
+XPDEV_HASH_EXPORT uint32_t crc32i(uint32_t crc, const char* buf, size_t);
+XPDEV_HASH_EXPORT uint32_t fcrc32(FILE* fp, size_t);
 
 #ifdef __cplusplus
 }

@@ -27,32 +27,51 @@ Optional audio backends can be disabled at configure time with the
 Use `cmake --install build --prefix <path>` to override the platform's default
 installation prefix.
 
-The default build and install provide both static and shared libraries. CMake
-consumers can select `xpdev::static` or `xpdev::shared`; `xpdev::xpdev` selects
-the shared library:
+The default build and install provide both static and shared variants of xpdev
+and its three optional component libraries. CMake consumers can select
+`xpdev::static` or `xpdev::shared`; `xpdev::xpdev` selects the shared library:
 
 ```cmake
 find_package(xpdev CONFIG REQUIRED)
 target_link_libraries(my_program PRIVATE xpdev::xpdev)
 ```
 
-The shared library uses ABI SONAME 1. Its release filename is versioned as
-`libxpdev.so.1.0` on ELF platforms, with the usual `libxpdev.so.1` SONAME and
-`libxpdev.so` development symlinks. ABI-compatible 1.x releases retain SONAME 1.
-All ELF exports carry the `XPDEV_1.0` symbol version. On macOS, CMake records
-compatibility version 1 and current version 1.0 in the dylib; on Windows, the
-ABI major is part of the `xpdev-1.dll` filename. Shared-library visibility is
-hidden by default on supported compilers: only declarations marked
-`DLLEXPORT` are public, so implementation globals are not part of the ABI.
+The comio, hash, and encode APIs are separate, opt-in libraries. Linking only
+`xpdev::xpdev` does not place their generic API names in a program's dynamic
+symbol scope. Each component has default/shared and static targets:
+
+```cmake
+find_package(xpdev CONFIG REQUIRED COMPONENTS hash encode)
+target_link_libraries(my_program PRIVATE xpdev::hash xpdev::encode)
+# Explicit alternatives: xpdev::hash_shared and xpdev::hash_static
+```
+
+The shared libraries use ABI SONAME 1. Their release filenames are versioned as
+`libxpdev.so.1.0`, `libxpdev-comio.so.1.0`, `libxpdev-hash.so.1.0`, and
+`libxpdev-encode.so.1.0` on ELF platforms, with the usual SONAME and development
+symlinks. ABI-compatible 1.x releases retain SONAME 1. The main ELF library's
+exports carry `XPDEV_1.0`; component exports carry `XPDEV_COMIO_1.0`,
+`XPDEV_HASH_1.0`, or `XPDEV_ENCODE_1.0`. These component nodes make a linked
+ELF reference require the selected component's version namespace and give the
+dynamic loader precise ABI requirements. They do not resolve ambiguity while
+initially linking two libraries that both define the same unversioned base
+symbol; only namespacing the base symbol can guarantee that.
+
+On macOS, CMake records compatibility version 1 and current version 1.0 in each
+dylib; on Windows, the ABI major is part of each DLL filename. Explicit export
+lists keep component implementation globals out of the shared-library ABI.
+The main shared library's visibility is hidden by default: only declarations
+marked `DLLEXPORT` are public, so implementation globals are not part of its ABI.
 Compatibility shims are exported only on systems where xpdev supplies their
 implementation; native platform functions are imported from the platform.
 XPDev-specific portability extensions use the `xp_` prefix so they do not
 occupy libc, pthread, curses, or other platform namespaces.
 
 When adding API in an ABI-compatible 1.x release, add its exact symbol names to
-a new node in `cmake/xpdev.map` that inherits from `XPDEV_1.0`; existing symbols
-remain at their original versions. CI rejects ELF libraries that expose any
-defined dynamic symbol without an `XPDEV_*` version.
+a new node in the corresponding `cmake/xpdev*.map` file that inherits from that
+library's 1.0 node; existing symbols remain at their original versions. CI
+rejects ELF libraries that expose any defined dynamic symbol without their
+library's expected `XPDEV_*` version.
 
 Public headers are installed under `include/xpdev` and can be included as, for
 example, `#include <xpdev/genwrap.h>`. They automatically include the generated

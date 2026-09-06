@@ -30,11 +30,25 @@ jobs:
           -DWITHOUT_PULSEAUDIO=ON
           -DWITHOUT_SDL_AUDIO=ON
 
-      - name: Build shared library
-        run: cmake --build build --config Release --target xpdev_shared_library
+      - name: Build libraries
+        run: cmake --build build --config Release
 
       - name: Verify symbol versions
-        run: ./.github/scripts/check-symbol-versions.sh build/libxpdev.so
+        run: |
+          ./.github/scripts/check-symbol-versions.sh build/libxpdev.so XPDEV_1.0
+          ./.github/scripts/check-symbol-versions.sh build/comio/libxpdev-comio.so XPDEV_COMIO_1.0
+          ./.github/scripts/check-symbol-versions.sh build/hash/libxpdev-hash.so XPDEV_HASH_1.0
+          ./.github/scripts/check-symbol-versions.sh build/encode/libxpdev-encode.so XPDEV_ENCODE_1.0
+
+      - name: Verify installed CMake package
+        run: |
+          cmake --install build --prefix "$RUNNER_TEMP/xpdev-install"
+          cmake -S tests/package-consumer -B consumer-build \
+            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/xpdev-install"
+          cmake --build consumer-build
+          cmake -E env \
+            "LD_LIBRARY_PATH=$RUNNER_TEMP/xpdev-install/lib" \
+            ctest --test-dir consumer-build --output-on-failure
 
   native-library-metadata:
     name: Native library metadata (${{ matrix.os }})
@@ -61,8 +75,8 @@ jobs:
           -DWITHOUT_PULSEAUDIO=ON
           -DWITHOUT_SDL_AUDIO=ON
 
-      - name: Build shared library
-        run: cmake --build build --config Release --target xpdev_shared_library
+      - name: Build libraries
+        run: cmake --build build --config Release
 
       - name: Verify Mach-O metadata and exports
         if: runner.os == 'macOS'
@@ -75,6 +89,16 @@ jobs:
             | grep -q 'compatibility version 1\.0\.0, current version 1\.0\.0'
           ! nm -gjU "$dylib" \
             | grep -E '^_(getch|globi|kbhit|msclock|pthread_.*|sem_trywait_block|unix_beep|alsa_api|init_sdl_audio|pa_api|pu_api|sdl_fillbuf|xp_mixer_pull|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$'
+          for component in comio hash encode; do
+            dylib="$(find build -name "libxpdev-${component}.1.dylib" -print -quit)"
+            test -n "$dylib"
+            otool -D "$dylib" | grep -q "libxpdev-${component}\.1\.dylib"
+            otool -L "$dylib" \
+              | grep -q 'compatibility version 1\.0\.0, current version 1\.0\.0'
+            diff -u \
+              <(LC_ALL=C sort "cmake/xpdev-${component}.exports") \
+              <(nm -gjU "$dylib" | LC_ALL=C sort)
+          done
 
       - name: Verify PE filename and exports
         if: runner.os == 'Windows'
@@ -98,3 +122,46 @@ jobs:
           if ($exportText -match '\s(alsa_api|getch|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_mutex_init_np|pthread_mutex_initializer_np|pu_api|sdl_fillbuf|sem_trywait_block|unix_beep|xp_mixer_pull|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)\s') {
             throw "internal or legacy implementation symbol was exported: $($Matches[1])"
           }
+
+          $componentExports = @{
+            'xpdev-comio-1.dll' = 'comVersion'
+            'xpdev-hash-1.dll' = 'SHA256Init'
+            'xpdev-encode-1.dll' = 'b64_encode'
+          }
+          foreach ($entry in $componentExports.GetEnumerator()) {
+            $componentDll = Get-ChildItem build -Recurse -File -Filter $entry.Key |
+              Select-Object -First 1
+            if (-not $componentDll) { throw "$($entry.Key) was not produced" }
+            $componentTable = cmd.exe /d /s /c "`"$vcvars`" >nul && dumpbin /nologo /exports `"$($componentDll.FullName)`""
+            if ($LASTEXITCODE -ne 0) { throw "dumpbin failed for $($entry.Key)" }
+            $componentText = $componentTable -join "`n"
+            if ($componentText -notmatch "\s$([regex]::Escape($entry.Value))\s") {
+              throw "$($entry.Value) was not exported by $($entry.Key)"
+            }
+            if ($componentText -match '\s(rate_to_macro|macro_to_rate)\s') {
+              throw "internal symbol was exported: $($Matches[1])"
+            }
+          }
+
+      - name: Verify installed CMake package
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          cmake --install build --config Release \
+            --prefix "$RUNNER_TEMP/xpdev-install"
+          cmake -S tests/package-consumer -B consumer-build \
+            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/xpdev-install"
+          cmake --build consumer-build --config Release
+          ctest --test-dir consumer-build -C Release --output-on-failure
+
+      - name: Verify installed CMake package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $prefix = Join-Path $env:RUNNER_TEMP 'xpdev-install'
+          cmake --install build --config Release --prefix $prefix
+          cmake -S tests/package-consumer -B consumer-build `
+            "-DCMAKE_PREFIX_PATH=$prefix"
+          cmake --build consumer-build --config Release
+          $env:PATH = "$(Join-Path $prefix 'bin');$env:PATH"
+          ctest --test-dir consumer-build -C Release --output-on-failure

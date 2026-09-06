@@ -464,6 +464,90 @@ add_library(xpdev::xpdev ALIAS xpdev_default)
 add_library(xpdev::static ALIAS xpdev_static_library)
 add_library(xpdev::shared ALIAS xpdev_shared_library)
 
+function(xpdev_add_component component)
+	cmake_parse_arguments(COMPONENT "" "" "SOURCES;HEADERS" ${ARGN})
+	if(NOT COMPONENT_SOURCES OR NOT COMPONENT_HEADERS)
+		message(FATAL_ERROR "xpdev_add_component(${component}) requires SOURCES and HEADERS")
+	endif()
+
+	set(object_target "${component}")
+	set(static_target "xpdev_${component}_static_library")
+	set(shared_target "xpdev_${component}_shared_library")
+	set(default_target "xpdev_${component}_default")
+
+	# Preserve the object targets used by Synchronet source-tree consumers.
+	add_library(${object_target} OBJECT EXCLUDE_FROM_ALL ${COMPONENT_SOURCES})
+	target_compile_features(${object_target} PUBLIC c_std_11)
+	target_include_directories(${object_target} PUBLIC
+		${CMAKE_CURRENT_SOURCE_DIR})
+	target_link_libraries(${object_target} PUBLIC xpdev)
+
+	add_library(${static_target} STATIC ${COMPONENT_SOURCES})
+	add_library(${shared_target} SHARED ${COMPONENT_SOURCES})
+	foreach(target IN ITEMS ${static_target} ${shared_target})
+		target_compile_features(${target} PUBLIC c_std_11)
+		target_include_directories(${target} PUBLIC
+			$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+			$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+			$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/xpdev>)
+	endforeach()
+	target_link_libraries(${static_target} PUBLIC xpdev_static_library)
+	target_link_libraries(${shared_target} PUBLIC xpdev_shared_library)
+
+	set_target_properties(${static_target} PROPERTIES
+		EXPORT_NAME "${component}_static"
+		OUTPUT_NAME "xpdev-${component}"
+		POSITION_INDEPENDENT_CODE ON)
+	set_target_properties(${shared_target} PROPERTIES
+		EXPORT_NAME "${component}_shared"
+		OUTPUT_NAME "xpdev-${component}"
+		SOVERSION ${PROJECT_VERSION_MAJOR}
+		VERSION ${PROJECT_VERSION})
+
+	if(XPDEV_ELF_SYMBOL_VERSIONING)
+		set(version_script
+			"${PROJECT_SOURCE_DIR}/cmake/xpdev-${component}.map")
+		target_link_options(${shared_target} PRIVATE
+			"LINKER:--version-script=${version_script}")
+		set_property(TARGET ${shared_target} APPEND PROPERTY LINK_DEPENDS
+			"${version_script}")
+	elseif(APPLE)
+		set(export_list
+			"${PROJECT_SOURCE_DIR}/cmake/xpdev-${component}.exports")
+		target_link_options(${shared_target} PRIVATE
+			"LINKER:-exported_symbols_list,${export_list}")
+		set_property(TARGET ${shared_target} APPEND PROPERTY LINK_DEPENDS
+			"${export_list}")
+	elseif(WIN32)
+		target_sources(${shared_target} PRIVATE
+			"${PROJECT_SOURCE_DIR}/cmake/xpdev-${component}.def")
+		set_target_properties(${static_target} PROPERTIES
+			OUTPUT_NAME "xpdev-${component}_static")
+		set_target_properties(${shared_target} PROPERTIES
+			OUTPUT_NAME "xpdev-${component}-${PROJECT_VERSION_MAJOR}")
+	endif()
+
+	add_library(${default_target} INTERFACE)
+	target_link_libraries(${default_target} INTERFACE ${shared_target})
+	set_target_properties(${default_target} PROPERTIES EXPORT_NAME ${component})
+	add_library(xpdev::${component} ALIAS ${default_target})
+	add_library(xpdev::${component}_static ALIAS ${static_target})
+	add_library(xpdev::${component}_shared ALIAS ${shared_target})
+
+	install(TARGETS ${static_target} ${shared_target} ${default_target}
+		EXPORT xpdevTargets
+		ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+		LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+		RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+		INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+	install(FILES ${COMPONENT_HEADERS}
+		DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/xpdev/${component}")
+endfunction()
+
+add_subdirectory(comio)
+add_subdirectory(hash)
+add_subdirectory(encode)
+
 set(XPDEV_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/xpdev"
 	CACHE STRING "Directory for xpdev CMake package files")
 

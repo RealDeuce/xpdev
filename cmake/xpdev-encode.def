@@ -1,0 +1,20 @@
+EXPORTS
+	b64_decode
+	b64_encode
+	cp437_to_utf8_str
+	hex_decode
+	hex_encode
+	latin1_to_utf8_str
+	lzh_decode
+	lzh_encode
+	utf8_decode_firstbyte
+	utf8_getc
+	utf8_normalize_str
+	utf8_putc
+	utf8_replace_chars
+	utf8_str_count_width
+	utf8_str_is_valid
+	utf8_str_total_width
+	utf8_strlcpy
+	utf8_to_cp437_str
+	utf8_to_latin1_str

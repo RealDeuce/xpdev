@@ -21,6 +21,7 @@
 
 #include <stddef.h>     /* size_t */
 #include <stdint.h>     /* uint32_t, uint64_t */
+#include "hash_export.h"
 
 /* The FNV-1a offset bases: the value an empty input hashes to, and the seed a
  * fnv1a*_update() chain starts from. */
@@ -42,17 +43,17 @@ extern "C" {
  * Note that FNV's multiply carries bits upward only, so its LOW bits are its
  * weakest. To index a power-of-2 table, xor-fold rather than masking:
  * `(h >> n) ^ (h & ((1 << n) - 1))` distributes far better than `h & mask`. */
-uint32_t fnv1a32(const void* buf, size_t len);
+XPDEV_HASH_EXPORT uint32_t fnv1a32(const void* buf, size_t len);
 
 /* Same hash, resumable: folds `len` more bytes into a running `hash`. Start a
  * chain at FNV1A32_INIT. Chaining is exact -- hashing a buffer in any number of
  * pieces equals fnv1a32() over the whole thing -- so a caller whose input is not
  * one contiguous buffer need not marshal it into a scratch buffer first. */
-uint32_t fnv1a32_update(uint32_t hash, const void* buf, size_t len);
+XPDEV_HASH_EXPORT uint32_t fnv1a32_update(uint32_t hash, const void* buf, size_t len);
 
 /* Same hash over a NUL-terminated string. The terminator is not hashed, so this
  * equals fnv1a32(str, strlen(str)) exactly -- in a single pass. */
-uint32_t fnv1a32_str(const char* str);
+XPDEV_HASH_EXPORT uint32_t fnv1a32_str(const char* str);
 
 /* The 64-bit width: identical construction, wider accumulator and its own pair
  * of FNV constants (the two widths are NOT related -- fnv1a32() is not fnv1a64()
@@ -65,9 +66,9 @@ uint32_t fnv1a32_str(const char* str);
  * base, a user-supplied corpus) or a collision would be silent rather than
  * merely inefficient; 32 bits is fine for a bounded, small set whose collisions
  * are detected or harmless. */
-uint64_t fnv1a64(const void* buf, size_t len);
-uint64_t fnv1a64_update(uint64_t hash, const void* buf, size_t len);
-uint64_t fnv1a64_str(const char* str);
+XPDEV_HASH_EXPORT uint64_t fnv1a64(const void* buf, size_t len);
+XPDEV_HASH_EXPORT uint64_t fnv1a64_update(uint64_t hash, const void* buf, size_t len);
+XPDEV_HASH_EXPORT uint64_t fnv1a64_str(const char* str);
 
 #ifdef __cplusplus
 }

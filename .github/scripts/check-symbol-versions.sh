@@ -3,8 +3,13 @@
 set -euo pipefail
 
 library="${1:-}"
+expected_version="${2:-XPDEV_1.0}"
 if test -z "$library" || ! test -f "$library"; then
-	printf 'usage: %s <ELF-shared-library>\n' "$0" >&2
+	printf 'usage: %s <ELF-shared-library> [expected-version]\n' "$0" >&2
+	exit 2
+fi
+if [[ ! "$expected_version" =~ ^XPDEV(_[A-Z]+)?_[0-9]+\.[0-9]+$ ]]; then
+	printf 'invalid XPDev symbol version: %s\n' "$expected_version" >&2
 	exit 2
 fi
 
@@ -19,24 +24,24 @@ readelf -h "$library" >/dev/null 2>&1 \
 	|| fail "$library is not an ELF object"
 
 version_info="$(readelf -V "$library")"
-grep -q 'XPDEV_1\.0' <<<"$version_info" \
-	|| fail "$library does not define the XPDEV_1.0 symbol version"
+grep -Fq "$expected_version" <<<"$version_info" \
+	|| fail "$library does not define the $expected_version symbol version"
 
 symbol_table="$({ readelf -W -s -D "$library" || readelf --wide --dyn-syms "$library"; })"
 
-unversioned="$(awk '
+unversioned="$(awk -v expected_version="$expected_version" '
 		$1 ~ /^[0-9]+:$/ && $7 != "UND" && ($5 == "GLOBAL" || $5 == "WEAK") {
 			name = $8
-			if (name == "" || name ~ /^XPDEV_[0-9]/)
+			if (name == "" || name ~ /^XPDEV(_[A-Z]+)?_[0-9]/)
 				next
-			if (name !~ /@XPDEV_[0-9]/)
+			if (index(name, "@" expected_version) == 0)
 				print name
 		}' \
 	<<<"$symbol_table" | sort -u)"
 
 if test -n "$unversioned"; then
 	printf '%s\n' "$unversioned" >&2
-	fail "defined dynamic symbols without an XPDEV version were exported"
+	fail "defined dynamic symbols without $expected_version were exported"
 fi
 
 invalid_names="$(awk '
@@ -57,5 +62,5 @@ if test -n "$invalid_names"; then
 	fail "platform or internal names leaked into the public ELF ABI"
 fi
 
-printf 'All defined dynamic symbols in %s have XPDEV symbol versions.\n' \
-	"$library"
+printf 'All defined dynamic symbols in %s have symbol version %s.\n' \
+	"$library" "$expected_version"

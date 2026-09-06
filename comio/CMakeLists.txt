@@ -1,25 +1,17 @@
-project (COMIO C)
-
-cmake_minimum_required(VERSION 3.11)
-
-set(SOURCE
+set(COMIO_SOURCE
 	comio.c
 )
 
-set(HEADER
+set(COMIO_HEADER
 	comio.h
 )
 
 if(WIN32)
-	list(APPEND SOURCE comio_win32.c)
+	list(APPEND COMIO_SOURCE comio_win32.c)
 else()
-	list(APPEND SOURCE comio_nix.c)
+	list(APPEND COMIO_SOURCE comio_nix.c)
 endif()
 
-add_library(comio OBJECT ${SOURCE})
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-	target_compile_definitions(comio PRIVATE SPEED_MACROS_ONLY)
-endif()
-target_include_directories(comio PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-
-target_link_libraries(comio xpdev)
+xpdev_add_component(comio SOURCES ${COMIO_SOURCE} HEADERS ${COMIO_HEADER})
+target_compile_definitions(xpdev_comio_shared_library PRIVATE COMIO_EXPORTS)
+target_compile_definitions(xpdev_comio_shared_library INTERFACE COMIO_IMPORTS)
