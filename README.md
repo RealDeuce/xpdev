@@ -31,6 +31,10 @@ find_package(xpdev CONFIG REQUIRED)
 target_link_libraries(my_program PRIVATE xpdev::xpdev)
 ```
 
+The shared library uses ABI SONAME 1. Its release filename is versioned as
+`libxpdev.so.1.0` on ELF platforms, with the usual `libxpdev.so.1` SONAME and
+`libxpdev.so` development symlinks. ABI-compatible 1.x releases retain SONAME 1.
+
 Public headers are installed under `include/xpdev` and can be included as, for
 example, `#include <xpdev/genwrap.h>`. They automatically include the generated
 `xpdev_config.h` where needed, preserving the feature macros used to compile the
