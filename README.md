@@ -28,6 +28,9 @@ SDL audio is a fallback: it is enabled only when no native or dedicated audio
 backend was detected and an SDL2-compatible development package is available.
 This currently makes SDL the normal backend on Haiku without imposing its
 entry-point requirements on platforms with direct audio support.
+Windows builds normally select system pthreads when CMake detects them. Set
+`XPDEV_USE_SYSTEM_PTHREADS=OFF` to use XPDev's Win32 pthread compatibility
+implementation even when an optional pthread library is installed.
 Use `cmake --install build --prefix <path>` to override the platform's default
 installation prefix.
 

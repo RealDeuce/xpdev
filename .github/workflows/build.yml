@@ -308,6 +308,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc-win32
           -DCMAKE_RC_COMPILER=x86_64-w64-mingw32-windres
+          -DXPDEV_USE_SYSTEM_PTHREADS=OFF
           -DWITHOUT_ALSA=ON
           -DWITHOUT_COREAUDIO=ON
           -DWITHOUT_OSS=ON
@@ -321,6 +322,7 @@ jobs:
 
       - name: Verify Win32 thread implementation
         run: |
+          grep '^#define XPDEV_USE_SYSTEM_PTHREADS ' build/xpdev_config.h
           grep -q '^#define XPDEV_USE_SYSTEM_PTHREADS 0$' \
             build/xpdev_config.h
 

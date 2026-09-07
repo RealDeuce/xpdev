@@ -25,7 +25,9 @@ if(NOT xpdev_FOUND)
 endif()
 
 include(CMakeFindDependencyMacro)
-find_dependency(Threads)
+if(@XPDEV_USE_SYSTEM_PTHREADS@)
+	find_dependency(Threads)
+endif()
 
 if(@XPDEV_CONFIG_NEEDS_SDL2@)
 	find_dependency(SDL2 CONFIG)
