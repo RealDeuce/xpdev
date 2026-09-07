@@ -217,13 +217,17 @@ jobs:
             'strListFreeContainer',
             'strListFreeString',
             'xp_audio_buffer_alloc',
-            'xp_audio_buffer_free'
+            'xp_audio_buffer_free',
+            'xpdev_sem_destroy_impl',
+            'xpdev_sem_init_impl',
+            'xpdev_sem_post_impl',
+            'xpdev_sem_trywait_block_impl'
           ) | ForEach-Object {
             if ($exportText -notmatch "\s$([regex]::Escape($_))\s") {
               throw "expected XPDev export was not found: $_"
             }
           }
-          if ($exportText -match '\s(alsa_api|asprintf|getch|getdelim|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_mutex_init_np|pthread_mutex_initializer_np|pu_api|realloc_or_free|sdl_fillbuf|sem_getvalue|sem_trywait_block|stbuf_frommem|strndup|unix_beep|vasprintf|xp_mixer_pull|xp_pthread_mutex_initializer|xp_sem_getvalue|xp_sem_setvalue|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)\s') {
+          if ($exportText -match '\s(alsa_api|asprintf|getch|getdelim|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_mutex_init_np|pthread_mutex_initializer_np|pu_api|realloc_or_free|sdl_fillbuf|sem_destroy|sem_getvalue|sem_init|sem_post|sem_trywait_block|stbuf_frommem|strndup|unix_beep|vasprintf|xp_mixer_pull|xp_pthread_mutex_initializer|xp_sem_getvalue|xp_sem_setvalue|xp_sem_trywait_block|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)\s') {
             throw "internal or legacy implementation symbol was exported: $($Matches[1])"
           }
 
@@ -336,11 +340,13 @@ jobs:
             grep -qx "$symbol" build/mingw-core-exports.txt
           done
           for symbol in strListAllocString strListFreeContainer \
-              strListFreeString xp_audio_buffer_alloc xp_audio_buffer_free; do
+              strListFreeString xp_audio_buffer_alloc xp_audio_buffer_free \
+              xpdev_sem_destroy_impl xpdev_sem_init_impl xpdev_sem_post_impl \
+              xpdev_sem_trywait_block_impl; do
             grep -qx "$symbol" build/mingw-core-exports.txt
           done
           if grep -E \
-              '^(alsa_api|asprintf|getch|getdelim|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_.*|pu_api|realloc_or_free|sdl_fillbuf|sem_getvalue|sem_trywait_block|stbuf_frommem|strndup|unix_beep|vasprintf|xp_mixer_pull|xp_pthread_mutex_initializer|xp_sem_getvalue|xp_sem_setvalue|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$' \
+              '^(alsa_api|asprintf|getch|getdelim|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_.*|pu_api|realloc_or_free|sdl_fillbuf|sem_destroy|sem_getvalue|sem_init|sem_post|sem_trywait_block|stbuf_frommem|strndup|unix_beep|vasprintf|xp_mixer_pull|xp_pthread_mutex_initializer|xp_sem_getvalue|xp_sem_setvalue|xp_sem_trywait_block|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$' \
               build/mingw-core-exports.txt; then
             echo 'MinGW DLL exported an internal or legacy implementation symbol' >&2
             exit 1
@@ -452,8 +458,17 @@ jobs:
               rwlock_tryrdlock rwlock_trywrlock rwlock_unlock rwlock_wrlock; do
             grep -qx "$symbol" build/mingw-win32-core-exports.txt
           done
+          for symbol in dataLineAlloc dataLineFree iniFreeEnumList iniFreeIntList \
+              listAllocData listFreeData msgQueueFreeMessage namedStrListFree \
+              namedStrListReplace namedStrListSetName namedStrListSetValue \
+              strListAllocString strListFreeContainer strListFreeString \
+              xp_audio_buffer_alloc xp_audio_buffer_free xpdev_sem_destroy_impl \
+              xpdev_sem_init_impl xpdev_sem_post_impl \
+              xpdev_sem_trywait_block_impl; do
+            grep -qx "$symbol" build/mingw-win32-core-exports.txt
+          done
           if grep -E \
-              '^(alsa_api|getch|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_.*_np|pu_api|sdl_fillbuf|sem_getvalue|sem_trywait_block|unix_beep|xp_mixer_pull|xp_pthread_mutex_initializer|xp_sem_getvalue|xp_sem_setvalue|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$' \
+              '^(alsa_api|asprintf|getch|getdelim|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_.*_np|pu_api|realloc_or_free|sdl_fillbuf|sem_destroy|sem_getvalue|sem_init|sem_post|sem_trywait_block|stbuf_frommem|strndup|unix_beep|vasprintf|xp_mixer_pull|xp_pthread_mutex_initializer|xp_sem_getvalue|xp_sem_setvalue|xp_sem_trywait_block|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$' \
               build/mingw-win32-core-exports.txt; then
             echo 'MinGW Win32-thread DLL exported an internal symbol' >&2
             exit 1

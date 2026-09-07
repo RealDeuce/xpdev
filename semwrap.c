@@ -67,95 +67,85 @@ xp_sem_trywait_block(sem_t *sem, uint32_t timeout)
 #endif
 
 static int
-win32_error(DWORD error)
+sem_error(int* error_out, int error)
+{
+	if (error_out != NULL)
+		*error_out = error;
+	return -1;
+}
+
+static int
+win32_error(DWORD error, int* error_out)
 {
 	switch (error) {
 		case ERROR_ACCESS_DENIED:
-			errno = EACCES;
-			break;
+			return sem_error(error_out, EACCES);
 		case ERROR_INVALID_HANDLE:
 		case ERROR_INVALID_PARAMETER:
-			errno = EINVAL;
-			break;
+			return sem_error(error_out, EINVAL);
 		case ERROR_NOT_ENOUGH_MEMORY:
 		case ERROR_OUTOFMEMORY:
-			errno = ENOMEM;
-			break;
+			return sem_error(error_out, ENOMEM);
 		case ERROR_TOO_MANY_POSTS:
-			errno = XPDEV_SEM_EOVERFLOW;
-			break;
+			return sem_error(error_out, XPDEV_SEM_EOVERFLOW);
 		default:
-			errno = EIO;
-			break;
+			return sem_error(error_out, EIO);
 	}
-	return -1;
 }
 
 #if defined(__BORLANDC__)
 	#pragma argsused
 #endif
-int sem_init(sem_t* psem, int pshared, unsigned int value)
+int xpdev_sem_init_impl(sem_t* psem, int pshared, unsigned int value, int* error_out)
 {
-	if (psem == NULL || value > INT_MAX) {
-		errno = EINVAL;
-		return -1;
-	}
-	if (pshared != 0) {
-		errno = XPDEV_SEM_ENOSYS;
-		return -1;
-	}
+	if (psem == NULL || value > INT_MAX)
+		return sem_error(error_out, EINVAL);
+	if (pshared != 0)
+		return sem_error(error_out, XPDEV_SEM_ENOSYS);
 	if ((*(psem) = CreateSemaphore(NULL, value, INT_MAX, NULL)) == NULL)
-		return win32_error(GetLastError());
+		return win32_error(GetLastError(), error_out);
 
 	return 0;
 }
 
-int xp_sem_trywait_block(sem_t* psem, uint32_t timeout)
+int xpdev_sem_trywait_block_impl(sem_t* psem, uint32_t timeout, int* error_out)
 {
 	DWORD result;
 
-	if (psem == NULL || *psem == NULL) {
-		errno = EINVAL;
-		return -1;
-	}
+	if (psem == NULL || *psem == NULL)
+		return sem_error(error_out, EINVAL);
 	result = WaitForSingleObject(*psem, timeout);
 	switch (result) {
 		case WAIT_OBJECT_0:
 			return 0;
 		case WAIT_TIMEOUT:
-			errno = EAGAIN;
-			return -1;
+			return sem_error(error_out, EAGAIN);
 		case WAIT_FAILED:
-			return win32_error(GetLastError());
+			return win32_error(GetLastError(), error_out);
 		default:
-			errno = EIO;
-			return -1;
+			return sem_error(error_out, EIO);
 	}
 }
 
-int sem_post(sem_t* psem)
+int xpdev_sem_post_impl(sem_t* psem, int* error_out)
 {
-	if (psem == NULL || *psem == NULL) {
-		errno = EINVAL;
-		return -1;
-	}
+	if (psem == NULL || *psem == NULL)
+		return sem_error(error_out, EINVAL);
 	if (ReleaseSemaphore(*psem, 1, NULL) == TRUE)
 		return 0;
 
-	return win32_error(GetLastError());
+	return win32_error(GetLastError(), error_out);
 }
 
-int sem_destroy(sem_t* psem)
+int xpdev_sem_destroy_impl(sem_t* psem, int* error_out)
 {
-	if (psem == NULL || *psem == NULL) {
-		errno = EINVAL;
-		return -1;
-	}
+	if (psem == NULL || *psem == NULL)
+		return sem_error(error_out, EINVAL);
 	if (CloseHandle(*psem) == TRUE) {
 		*psem = NULL;
 		return 0;
 	}
-	return win32_error(GetLastError());
+	return win32_error(GetLastError(), error_out);
 }
 
 #endif /* _WIN32 */

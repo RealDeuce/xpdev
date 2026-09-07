@@ -47,15 +47,73 @@ extern "C" {
 
 #elif defined(_WIN32)
 
+	#include <errno.h>
 	#include <process.h>    /* _beginthread */
 
 /* POSIX semaphores */
 typedef HANDLE sem_t;
-DLLEXPORT int sem_init(sem_t*, int pshared, unsigned int value);
-DLLEXPORT int sem_post(sem_t*);
-DLLEXPORT int sem_destroy(sem_t*);
-	#define sem_wait(psem)              xp_sem_trywait_block(psem, INFINITE)
-	#define sem_trywait(psem)           xp_sem_trywait_block(psem, 0)
+
+/* These are DLL implementation entry points.  error_out transfers the error
+ * value without relying on the DLL and caller sharing CRT errno storage. */
+DLLEXPORT int xpdev_sem_init_impl(sem_t*, int pshared, unsigned int value, int* error_out);
+DLLEXPORT int xpdev_sem_post_impl(sem_t*, int* error_out);
+DLLEXPORT int xpdev_sem_destroy_impl(sem_t*, int* error_out);
+DLLEXPORT int xpdev_sem_trywait_block_impl(sem_t*, uint32_t timeout, int* error_out);
+
+#if defined(__BORLANDC__)
+	#define XPDEV_SEMWRAP_INLINE
+#else
+	#define XPDEV_SEMWRAP_INLINE inline
+#endif
+
+static XPDEV_SEMWRAP_INLINE int
+xpdev_sem_result_local(int result, int error)
+{
+	if (result == -1)
+		errno = error;
+	return result;
+}
+
+static XPDEV_SEMWRAP_INLINE int
+xpdev_sem_init_local(sem_t* psem, int pshared, unsigned int value)
+{
+	int error = 0;
+	int result = xpdev_sem_init_impl(psem, pshared, value, &error);
+	return xpdev_sem_result_local(result, error);
+}
+
+static XPDEV_SEMWRAP_INLINE int
+xpdev_sem_post_local(sem_t* psem)
+{
+	int error = 0;
+	int result = xpdev_sem_post_impl(psem, &error);
+	return xpdev_sem_result_local(result, error);
+}
+
+static XPDEV_SEMWRAP_INLINE int
+xpdev_sem_destroy_local(sem_t* psem)
+{
+	int error = 0;
+	int result = xpdev_sem_destroy_impl(psem, &error);
+	return xpdev_sem_result_local(result, error);
+}
+
+static XPDEV_SEMWRAP_INLINE int
+xpdev_sem_trywait_block_local(sem_t* psem, uint32_t timeout)
+{
+	int error = 0;
+	int result = xpdev_sem_trywait_block_impl(psem, timeout, &error);
+	return xpdev_sem_result_local(result, error);
+}
+
+#undef XPDEV_SEMWRAP_INLINE
+
+	#define sem_init                 xpdev_sem_init_local
+	#define sem_post                 xpdev_sem_post_local
+	#define sem_destroy              xpdev_sem_destroy_local
+	#define xp_sem_trywait_block     xpdev_sem_trywait_block_local
+	#define sem_wait(psem)           xp_sem_trywait_block(psem, INFINITE)
+	#define sem_trywait(psem)        xp_sem_trywait_block(psem, 0)
 
 #elif defined(__OS2__)  /* These have *not* been tested! */
 
@@ -72,8 +130,11 @@ typedef HEV sem_t;
 
 #endif
 
-/* NOT POSIX */
+/* NOT POSIX.  The Windows definition above is caller-local so errno is set in
+ * the caller's CRT; Unix exports the implementation normally. */
+#if !defined(_WIN32)
 DLLEXPORT int xp_sem_trywait_block(sem_t* psem, uint32_t timeout);
+#endif
 
 
 /* Drain all currently available posts (NOT POSIX). */
