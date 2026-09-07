@@ -460,7 +460,6 @@ XPDEV_1.0 {
 		xp_printf_get_next;
 		xp_printf_get_type;
 		xp_pthread_mutex_init;
-		xp_pthread_mutex_initializer;
 		xp_random;
 		xp_randomize;
 		xp_sem_close;

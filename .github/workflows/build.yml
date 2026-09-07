@@ -186,7 +186,7 @@ jobs:
               throw "expected XPDev export was not found: $_"
             }
           }
-          if ($exportText -match '\s(alsa_api|getch|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_mutex_init_np|pthread_mutex_initializer_np|pu_api|sdl_fillbuf|sem_getvalue|sem_trywait_block|unix_beep|xp_mixer_pull|xp_sem_getvalue|xp_sem_setvalue|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)\s') {
+          if ($exportText -match '\s(alsa_api|getch|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_mutex_init_np|pthread_mutex_initializer_np|pu_api|sdl_fillbuf|sem_getvalue|sem_trywait_block|unix_beep|xp_mixer_pull|xp_pthread_mutex_initializer|xp_sem_getvalue|xp_sem_setvalue|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)\s') {
             throw "internal or legacy implementation symbol was exported: $($Matches[1])"
           }
 
@@ -295,7 +295,7 @@ jobs:
             grep -qx "$symbol" build/mingw-core-exports.txt
           done
           if grep -E \
-              '^(alsa_api|getch|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_.*|pu_api|sdl_fillbuf|sem_getvalue|sem_trywait_block|unix_beep|xp_mixer_pull|xp_sem_getvalue|xp_sem_setvalue|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$' \
+              '^(alsa_api|getch|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_.*|pu_api|sdl_fillbuf|sem_getvalue|sem_trywait_block|unix_beep|xp_mixer_pull|xp_pthread_mutex_initializer|xp_sem_getvalue|xp_sem_setvalue|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$' \
               build/mingw-core-exports.txt; then
             echo 'MinGW DLL exported an internal or legacy implementation symbol' >&2
             exit 1
@@ -408,7 +408,7 @@ jobs:
             grep -qx "$symbol" build/mingw-win32-core-exports.txt
           done
           if grep -E \
-              '^(alsa_api|getch|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_.*_np|pu_api|sdl_fillbuf|sem_getvalue|sem_trywait_block|unix_beep|xp_mixer_pull|xp_sem_getvalue|xp_sem_setvalue|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$' \
+              '^(alsa_api|getch|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_.*_np|pu_api|sdl_fillbuf|sem_getvalue|sem_trywait_block|unix_beep|xp_mixer_pull|xp_pthread_mutex_initializer|xp_sem_getvalue|xp_sem_setvalue|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$' \
               build/mingw-win32-core-exports.txt; then
             echo 'MinGW Win32-thread DLL exported an internal symbol' >&2
             exit 1

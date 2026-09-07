@@ -49,6 +49,7 @@ invalid_names="$(awk '
 			name = $8
 			sub(/@.*/, "", name)
 			if (name ~ /^pthread_/ ||
+			    name == "xp_pthread_mutex_initializer" ||
 			    name ~ /^(getch|globi|kbhit|msclock|sem_trywait_block|unix_beep)$/ ||
 			    name ~ /^_(echo_(off|on)|termios_(reset|setup))$/ ||
 			    name ~ /^(alsa_api|init_sdl_audio|pa_api|pu_api|sdl_fillbuf)$/ ||
