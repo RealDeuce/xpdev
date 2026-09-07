@@ -204,10 +204,11 @@ export/baseline check.
 
 ## Build, install, and package behavior
 
-- [ ] **P0: Test the installed package without CMake targets if that use is
-  supported.** Compile C and C++ consumers directly against installed headers
-  and each static/shared library. This is distinct from the current imported-
-  target tests and will expose missing generated configuration.
+- [x] **P0: Test the installed package without CMake targets.** CI compiles and
+  runs C and C++ consumers directly against installed headers and all four
+  static/shared libraries. Linux, macOS, MSVC with both runtime-library modes,
+  and MinGW with both POSIX and Win32 thread models exercise this independently
+  of the CMake imported targets.
 - [ ] **P0: Test a no-audio installation and fallback consumer.** Verify that
   `find_package(xpdev QUIET COMPONENTS audio)` fails before importing targets,
   then demonstrate that a `FetchContent` fallback can create the normal XPDev
