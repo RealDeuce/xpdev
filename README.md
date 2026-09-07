@@ -28,9 +28,11 @@ SDL audio is a fallback: it is enabled only when no native or dedicated audio
 backend was detected and an SDL2-compatible development package is available.
 This currently makes SDL the normal backend on Haiku without imposing its
 entry-point requirements on platforms with direct audio support.
-Windows builds prefer XPDev's thin Win32 pthread compatibility implementation.
-Set `XPDEV_USE_SYSTEM_PTHREADS=ON` to use a detected POSIX pthread library when
-interoperability with that implementation is required.
+MinGW builds use a detected POSIX pthread implementation so XPDev's public
+pthread types match the toolchain environment. MSVC and MinGW toolchains
+without pthreads use XPDev's thin Win32 compatibility implementation. The
+selection can be overridden with `XPDEV_USE_SYSTEM_PTHREADS`, but enabling it
+requires a detected POSIX pthread library.
 
 On Unix, CMake uses the platform's native POSIX semaphore implementation when
 the complete API wrapped by `semwrap.h`, including `sem_timedwait()`, is

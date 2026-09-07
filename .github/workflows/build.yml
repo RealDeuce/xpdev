@@ -253,7 +253,6 @@ jobs:
           cmake -S . -B build -G Ninja
           -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_C_COMPILER=gcc
-          -DXPDEV_USE_SYSTEM_PTHREADS=ON
           -DWITHOUT_ALSA=ON
           -DWITHOUT_COREAUDIO=ON
           -DWITHOUT_OSS=ON
@@ -312,34 +311,49 @@ jobs:
 
   mingw-w64-win32-threads:
     name: MinGW-w64 Win32-thread wrappers
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     timeout-minutes: 20
+
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install MinGW-w64 Win32-thread toolchain
+      - name: Install prebuilt MinGW-w64 Win32-thread toolchain
+        shell: pwsh
         run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends \
-            binutils-mingw-w64-x86-64 \
-            gcc-mingw-w64-x86-64-win32 \
-            g++-mingw-w64-x86-64-win32
+          $archive = Join-Path $env:RUNNER_TEMP 'mingw-win32.7z'
+          $destination = Join-Path $env:RUNNER_TEMP 'mingw-win32'
+          $url = 'https://github.com/niXman/mingw-builds-binaries/releases/download/16.2.0-rt_v14-rev1/x86_64-16.2.0-release-win32-seh-ucrt-rt_v14-rev1.7z'
+          curl.exe -L --fail --silent --show-error -o $archive $url
+          if ($LASTEXITCODE -ne 0) { throw 'MinGW-w64 download failed' }
+          $actualHash = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
+          $expectedHash = 'c9ae8e4a3afa667b3301dd28c567109d174a0fa0856a2eeaa85a91b89569a50b'
+          if ($actualHash -ne $expectedHash) {
+            throw "MinGW-w64 archive checksum mismatch: $actualHash"
+          }
+          & 7z x $archive "-o$destination" -y
+          if ($LASTEXITCODE -ne 0) { throw 'MinGW-w64 extraction failed' }
+          $bin = Join-Path $destination 'mingw64\bin'
+          if (-not (Test-Path (Join-Path $bin 'gcc.exe'))) {
+            throw 'MinGW-w64 compiler was not found after extraction'
+          }
+          $bin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Verify compiler thread model
         run: |
-          x86_64-w64-mingw32-gcc-win32 -v 2>&1 \
-            | grep -q '^Thread model: win32$'
+          test "$(gcc -dumpmachine)" = x86_64-w64-mingw32
+          gcc -v 2>&1 | grep -q '^Thread model: win32$'
 
       - name: Configure
         run: >-
           cmake -S . -B build -G Ninja
-          -DCMAKE_SYSTEM_NAME=Windows
           -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc-win32
-          -DCMAKE_RC_COMPILER=x86_64-w64-mingw32-windres
-          -DXPDEV_USE_SYSTEM_PTHREADS=OFF
+          -DCMAKE_C_COMPILER=gcc
+          -DCMAKE_RC_COMPILER=windres
           -DWITHOUT_ALSA=ON
           -DWITHOUT_COREAUDIO=ON
           -DWITHOUT_OSS=ON
@@ -359,11 +373,11 @@ jobs:
 
           core_dll="$(find build -type f -name 'libxpdev-1.dll' -print -quit)"
           test -n "$core_dll"
-          ! x86_64-w64-mingw32-objdump -p "$core_dll" \
+          ! objdump -p "$core_dll" \
             | grep -qi 'DLL Name:.*winpthread'
 
           export_names() {
-            x86_64-w64-mingw32-objdump -p "$1" | sed -n -E \
+            objdump -p "$1" | sed -n -E \
               '/^\[Ordinal\/Name Pointer\] Table/,/^\r?$/ s/^[[:space:]]*\[[[:space:]]*[0-9]+\].*[[:space:]]([^[:space:]\r]+)\r?$/\1/p'
           }
 
@@ -390,16 +404,17 @@ jobs:
               "build/mingw-win32-${component}-actual.txt"
           done
 
-      - name: Verify installed CMake package compiles
+      - name: Verify installed CMake package
         run: |
-          prefix="$RUNNER_TEMP/xpdev-install"
+          prefix="$(cygpath -u "$RUNNER_TEMP")/xpdev-install"
           cmake --install build --prefix "$prefix"
           cmake -S tests/package-consumer -B consumer-build -G Ninja \
-            -DCMAKE_SYSTEM_NAME=Windows \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc-win32 \
-            -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++-win32 \
-            -DCMAKE_RC_COMPILER=x86_64-w64-mingw32-windres \
+            -DCMAKE_C_COMPILER=gcc \
+            -DCMAKE_CXX_COMPILER=g++ \
+            -DCMAKE_RC_COMPILER=windres \
             -DCMAKE_PREFIX_PATH="$prefix" \
             -DXPDEV_CONSUMER_EXPECT_AUDIO_BACKENDS=WASAPI
           cmake --build consumer-build
+          PATH="$prefix/bin:$PATH" \
+            ctest --test-dir consumer-build --output-on-failure
