@@ -6,6 +6,9 @@ is located at the repository root, while `src/comio`, `src/hash`, and
 `src/encode` are mirrored into the matching `comio`, `hash`, and `encode`
 subdirectories.
 
+Work that must be investigated, decided, or completed before the first stable
+release is tracked in [RELEASE-1.0-CHECKLIST.md](RELEASE-1.0-CHECKLIST.md).
+
 The imported histories retain their original authors, dates, messages, and
 ancestry. The GPL-licensed uuencode and yEnc implementations are excluded from
 every imported `encode` revision, so neither their files nor their historical
