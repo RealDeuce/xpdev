@@ -2,6 +2,18 @@
 #include <stdio.h>
 #include <string.h>
 
+/*
+ * Some C libraries expose their conforming functions through fortified
+ * macros.  Remove those system definitions after stdio.h has declared the
+ * functions so this test can detect only macros introduced by XPDev.
+ */
+#ifdef snprintf
+	#undef snprintf
+#endif
+#ifdef vsnprintf
+	#undef vsnprintf
+#endif
+
 #include <xpdev/comio/comio.h>
 #include <xpdev/encode/base64.h>
 #include <xpdev/genwrap.h>
