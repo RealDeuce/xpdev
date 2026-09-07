@@ -48,17 +48,20 @@
 extern "C" {
 #endif
 
-#if defined(__unix__)
+#if defined(__unix__) || (defined(XPDEV_USE_SYSTEM_PTHREADS) && XPDEV_USE_SYSTEM_PTHREADS)
 
-	#include <sys/param.h>
 	#include <pthread.h>	/* POSIX threads and mutexes */
-	#include <unistd.h>	/* _POSIX_THREADS definition on FreeBSD (at least) */
+	#define XPDEV_HAS_SYSTEM_PTHREADS 1
 
+	#if defined(__unix__)
+	#include <sys/param.h>
+	#include <unistd.h>	/* _POSIX_THREADS definition on FreeBSD (at least) */
 	/* Win32 thread API wrappers */
 	DLLEXPORT ulong _beginthread(void( *start_address )( void * )
 			,unsigned stack_size, void *arglist);
 
 	#define GetCurrentThreadId()		pthread_self()
+	#endif
 
 #elif defined(_WIN32)	
 
@@ -101,7 +104,7 @@ extern "C" {
 DLLEXPORT bool xp_pthread_mutex_init(pthread_mutex_t *mtx, bool recursive);
 DLLEXPORT pthread_mutex_t xp_pthread_mutex_initializer(bool recursive);
 
-#if defined(_POSIX_THREADS)
+#if defined(XPDEV_HAS_SYSTEM_PTHREADS)
 
 #if defined (__FreeBSD__) || defined (__OpenBSD__)
  #include <pthread_np.h>

@@ -91,7 +91,7 @@ ulong _beginthread(void (*start_address)( void * )
 /****************************************************************************/
 bool xp_pthread_mutex_init(pthread_mutex_t *mutex, bool recursive)
 {
-#if defined(_POSIX_THREADS)
+#if defined(XPDEV_HAS_SYSTEM_PTHREADS)
 	pthread_mutexattr_t attr;
 	if (pthread_mutexattr_init(&attr) != 0)
 		return false;
@@ -122,7 +122,7 @@ bool xp_pthread_mutex_init(pthread_mutex_t *mutex, bool recursive)
 pthread_mutex_t xp_pthread_mutex_initializer(bool recursive)
 {
 	pthread_mutex_t     mutex;
-#if defined(_POSIX_THREADS)
+#if defined(XPDEV_HAS_SYSTEM_PTHREADS)
 	pthread_mutexattr_t attr;
 	pthread_mutexattr_init(&attr);
 	if (recursive)
@@ -139,7 +139,7 @@ pthread_mutex_t xp_pthread_mutex_initializer(bool recursive)
 	return mutex;
 }
 
-#if !defined(_POSIX_THREADS)
+#if !defined(XPDEV_HAS_SYSTEM_PTHREADS)
 
 int pthread_once(pthread_once_t *oc, void (*init)(void))
 {
