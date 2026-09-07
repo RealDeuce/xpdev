@@ -42,15 +42,50 @@ for path in "$xpdev_prefix" src/comio src/hash src/encode; do
 done
 
 printf 'Projecting %s to the repository root...\n' "$xpdev_prefix"
-xpdev_commit="$(git subtree split --quiet --prefix="$xpdev_prefix" "$upstream_ref")"
+last_xpdev_sync="$(git log -1 --format=%H \
+	--grep='^Upstream-XPDev-Split:' HEAD)"
+if test -n "$last_xpdev_sync"; then
+	last_upstream_source="$(git show -s \
+		--format='%(trailers:key=Upstream-Source,valueonly)' \
+		"$last_xpdev_sync")"
+	last_xpdev_split="$(git show -s \
+		--format='%(trailers:key=Upstream-XPDev-Split,valueonly)' \
+		"$last_xpdev_sync")"
+fi
+
+if test -n "${last_upstream_source:-}" \
+		&& test -n "${last_xpdev_split:-}" \
+		&& git cat-file -e "${last_xpdev_split}^{commit}" 2>/dev/null \
+		&& git merge-base --is-ancestor "$last_upstream_source" "$upstream_ref"; then
+	printf 'Continuing XPDev projection from upstream %s / split %s...\n' \
+		"$(git rev-parse --short=12 "$last_upstream_source")" \
+		"$(git rev-parse --short=12 "$last_xpdev_split")"
+	marker_message="$(printf '%s\n\n%s\n%s\n' \
+		'Temporary incremental XPDev projection marker' \
+		"git-subtree-dir: ${xpdev_prefix}" \
+		"git-subtree-mainline: ${last_upstream_source}" \
+		"git-subtree-split: ${last_xpdev_split}")"
+	xpdev_marker="$(printf '%s\n' "$marker_message" \
+		| git commit-tree "${upstream_ref}^{tree}" -p "$upstream_ref")"
+	xpdev_commit="$(git subtree split --quiet --prefix="$xpdev_prefix" \
+		"$xpdev_marker")"
+else
+	printf 'No usable XPDev projection checkpoint; projecting full history.\n'
+	xpdev_commit="$(git subtree split --quiet --prefix="$xpdev_prefix" \
+		"$upstream_ref")"
+fi
 git cat-file -e "${xpdev_commit}^{commit}" 2>/dev/null \
 	|| fail "git subtree split did not produce an xpdev commit"
 
 if ! git merge-base --is-ancestor "$xpdev_commit" HEAD; then
 	short_commit="$(git rev-parse --short=12 "$xpdev_commit")"
 	printf 'Merging projected xpdev commit %s...\n' "$short_commit"
+	printf -v merge_metadata \
+		'Upstream-Source: %s\nUpstream-XPDev-Split: %s' \
+		"$(git rev-parse "$upstream_ref")" "$xpdev_commit"
 	if ! git merge --no-ff -m \
 		"Merge src/xpdev from SynchronetBBS/sbbs@${short_commit}" \
+		-m "$merge_metadata" \
 		"$xpdev_commit"; then
 		printf 'Conflicted paths:\n' >&2
 		git status --short >&2
