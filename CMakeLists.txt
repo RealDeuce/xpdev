@@ -5,6 +5,16 @@ project(XPDev VERSION 1.0 LANGUAGES C)
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
 
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+	set(XPDEV_BUILD_INSTALLABLE_LIBRARIES_DEFAULT ON)
+else()
+	set(XPDEV_BUILD_INSTALLABLE_LIBRARIES_DEFAULT OFF)
+endif()
+option(XPDEV_BUILD_INSTALLABLE_LIBRARIES
+	"Build and install the static and shared xpdev libraries"
+	${XPDEV_BUILD_INSTALLABLE_LIBRARIES_DEFAULT})
+unset(XPDEV_BUILD_INSTALLABLE_LIBRARIES_DEFAULT)
+
 set(WITHOUT_OSS OFF CACHE BOOL "Disable OSS Audio")
 set(WITHOUT_SDL_AUDIO OFF CACHE BOOL "Disable SDL Audio")
 set(WITHOUT_ALSA OFF CACHE BOOL "Disable ALSA Audio")
@@ -15,10 +25,15 @@ set(WITHOUT_COREAUDIO OFF CACHE BOOL "Disable Core Audio (macOS)")
 
 include(CheckSymbolExists)
 include(CheckIncludeFiles)
-include(CheckFunctionExists)
 find_package(Threads REQUIRED)
 if(NOT WITHOUT_SDL_AUDIO)
-	find_package(SDL2 CONFIG PATHS /Library/Frameworks)
+	if(WIN32 AND NOT XPDEV_BUILD_INSTALLABLE_LIBRARIES)
+		set(SDL2_FOUND ON)
+		set(SDL2_INCLUDE_DIRS
+			${CMAKE_CURRENT_SOURCE_DIR}/../../3rdp/win32.release/sdl2/include)
+	else()
+		find_package(SDL2 CONFIG PATHS /Library/Frameworks)
+	endif()
 endif()
 if(NOT WITHOUT_PULSEAUDIO)
 	find_package(PulseAudio CONFIG PATHS /usr/local)
@@ -114,11 +129,11 @@ if(NOT WIN32)
 endif()
 
 check_symbol_exists(strlcpy string.h HAS_STRLCPY)
-check_function_exists(asprintf HAS_ASPRINTF)
-check_function_exists(vasprintf HAS_VASPRINTF)
-check_function_exists(getdelim HAS_GETDELIM)
-check_function_exists(strcasestr HAS_STRCASESTR)
-check_function_exists(strtok_r HAS_STRTOK_R)
+check_symbol_exists(asprintf stdio.h HAS_ASPRINTF)
+check_symbol_exists(vasprintf stdio.h HAS_VASPRINTF)
+check_symbol_exists(getdelim stdio.h HAS_GETDELIM)
+check_symbol_exists(strcasestr string.h HAS_STRCASESTR)
+check_symbol_exists(strtok_r string.h HAS_STRTOK_R)
 check_symbol_exists(random stdlib.h HAS_RANDOM_FUNC) 
 check_symbol_exists(srandomdev stdlib.h HAS_SRANDOMDEV_FUNC)
 check_symbol_exists(mkstemp stdlib.h HAS_MKSTEMP_FUNC)
@@ -140,6 +155,7 @@ function(xpdev_configure_target target)
 		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
 		$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
 		$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+	target_compile_definitions(${target} PUBLIC XPDEV_USE_CONFIG_H)
 	target_link_libraries(${target} PUBLIC Threads::Threads ${CMAKE_DL_LIBS})
 
 	if(WIN32)
@@ -239,9 +255,14 @@ function(xpdev_configure_target target)
 	endif()
 
 	if(XPDEV_WITH_SDL_AUDIO)
-		target_include_directories(${target} PUBLIC
-			"$<BUILD_INTERFACE:$<TARGET_PROPERTY:SDL2::SDL2,INTERFACE_INCLUDE_DIRECTORIES>>"
-			"$<INSTALL_INTERFACE:$<TARGET_PROPERTY:SDL2::SDL2,INTERFACE_INCLUDE_DIRECTORIES>>")
+		if(TARGET SDL2::SDL2)
+			target_include_directories(${target} PUBLIC
+				"$<BUILD_INTERFACE:$<TARGET_PROPERTY:SDL2::SDL2,INTERFACE_INCLUDE_DIRECTORIES>>"
+				"$<INSTALL_INTERFACE:$<TARGET_PROPERTY:SDL2::SDL2,INTERFACE_INCLUDE_DIRECTORIES>>")
+		else()
+			target_include_directories(${target} PUBLIC
+				"$<BUILD_INTERFACE:${SDL2_INCLUDE_DIRS}>")
+		endif()
 		target_compile_definitions(${target} PUBLIC WITH_SDL_AUDIO)
 		if(XPDEV_STATIC_SDL)
 			target_compile_definitions(${target} PUBLIC STATIC_SDL)
@@ -422,6 +443,10 @@ add_library(xpdev OBJECT EXCLUDE_FROM_ALL ${SOURCE})
 set_target_properties(xpdev PROPERTIES POSITION_INDEPENDENT_CODE ON)
 xpdev_configure_target(xpdev)
 
+if(NOT XPDEV_BUILD_INSTALLABLE_LIBRARIES)
+	return()
+endif()
+
 add_library(xpdev_static_library STATIC ${SOURCE})
 add_library(xpdev_shared_library SHARED ${SOURCE})
 xpdev_configure_target(xpdev_static_library)
@@ -567,7 +592,14 @@ install(TARGETS xpdev_static_library xpdev_shared_library xpdev_default
 	INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(FILES ${HEADER} ${CMAKE_CURRENT_BINARY_DIR}/xpdev_config.h
 	DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/xpdev)
-install(FILES LICENSE
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+	set(XPDEV_LICENSE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../LICENSE")
+	set(XPDEV_LICENSE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../../LICENSE")
+else()
+	message(FATAL_ERROR "Unable to locate the xpdev license file")
+endif()
+install(FILES "${XPDEV_LICENSE_FILE}"
 	DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/xpdev)
 install(EXPORT xpdevTargets
 	FILE xpdevTargets.cmake

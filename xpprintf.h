@@ -26,6 +26,7 @@
 
 #include <stdarg.h>
 #include <stddef.h>
+#include "gen_defs.h"
 #include "wrapdll.h"
 
 /* Supported printf argument types */
