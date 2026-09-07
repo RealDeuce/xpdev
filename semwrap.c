@@ -28,7 +28,7 @@
 #include <stdlib.h> /* NULL */
 
 int
-xp_sem_trywait_block(sem_t *sem, unsigned long timeout)
+xp_sem_trywait_block(sem_t *sem, uint32_t timeout)
 {
 	int             retval;
 	long            nanoseconds;
@@ -96,7 +96,7 @@ int sem_init(sem_t* psem, int pshared, unsigned int value)
 	return 0;
 }
 
-int xp_sem_trywait_block(sem_t* psem, unsigned long timeout)
+int xp_sem_trywait_block(sem_t* psem, uint32_t timeout)
 {
 	DWORD result;
 

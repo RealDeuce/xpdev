@@ -73,7 +73,7 @@ typedef HEV sem_t;
 #endif
 
 /* NOT POSIX */
-DLLEXPORT int xp_sem_trywait_block(sem_t* psem, unsigned long timeout);
+DLLEXPORT int xp_sem_trywait_block(sem_t* psem, uint32_t timeout);
 
 
 /* Drain all currently available posts (NOT POSIX). */
