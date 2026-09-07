@@ -173,7 +173,7 @@ add_test(NAME xpdev_cpp_atomic_consumer COMMAND xpdev_cpp_atomic_consumer)
 
 if(WIN32)
 	add_executable(xpdev_windows_wrapper_consumer consumer_windows.c)
-	target_link_libraries(xpdev_windows_wrapper_consumer PRIVATE xpdev::static)
+	target_link_libraries(xpdev_windows_wrapper_consumer PRIVATE xpdev::shared)
 	add_test(NAME xpdev_windows_wrapper_consumer
 		COMMAND xpdev_windows_wrapper_consumer)
 elseif(UNIX)

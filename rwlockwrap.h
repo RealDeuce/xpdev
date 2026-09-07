@@ -58,6 +58,7 @@ rwlock_destroy(rwlock_t *lock)
 
 #include "gen_defs.h"   // For windows.h and bool
 #include "threadwrap.h"
+#include "wrapdll.h"
 
 struct rwlock_reader_thread {
 	struct rwlock_reader_thread *next;
@@ -77,13 +78,13 @@ typedef struct {
 	struct rwlock_reader_thread *rthreads;
 } rwlock_t;
 
-bool rwlock_init(rwlock_t *lock);
-bool rwlock_rdlock(rwlock_t *lock);
-bool rwlock_tryrdlock(rwlock_t *lock);
-bool rwlock_wrlock(rwlock_t *lock);
-bool rwlock_trywrlock(rwlock_t *lock);
-bool rwlock_unlock(rwlock_t *lock);
-bool rwlock_destroy(rwlock_t *lock);
+DLLEXPORT bool rwlock_init(rwlock_t *lock);
+DLLEXPORT bool rwlock_rdlock(rwlock_t *lock);
+DLLEXPORT bool rwlock_tryrdlock(rwlock_t *lock);
+DLLEXPORT bool rwlock_wrlock(rwlock_t *lock);
+DLLEXPORT bool rwlock_trywrlock(rwlock_t *lock);
+DLLEXPORT bool rwlock_unlock(rwlock_t *lock);
+DLLEXPORT bool rwlock_destroy(rwlock_t *lock);
 
 #else
 #error Not implemented

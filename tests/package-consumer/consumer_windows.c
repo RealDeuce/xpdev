@@ -60,6 +60,22 @@ main(void)
 		return 11;
 	if (!rwlock_destroy(&lock))
 		return 12;
+	if (!rwlock_init(&lock))
+		return 20;
+	if (!rwlock_tryrdlock(&lock))
+		return 21;
+	if (!rwlock_unlock(&lock))
+		return 22;
+	if (!rwlock_trywrlock(&lock))
+		return 23;
+	if (!rwlock_unlock(&lock))
+		return 24;
+	if (!rwlock_wrlock(&lock))
+		return 25;
+	if (!rwlock_unlock(&lock))
+		return 26;
+	if (!rwlock_destroy(&lock))
+		return 27;
 
 	errno = 0;
 	if (sem_init(&sem, 0, UINT_MAX) != -1 || errno != EINVAL)

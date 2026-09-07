@@ -173,6 +173,19 @@ jobs:
           if ($exportText -notmatch '\sxp_pthread_mutex_init\s') {
             throw 'expected XPDev exports were not found'
           }
+          @(
+            'rwlock_destroy',
+            'rwlock_init',
+            'rwlock_rdlock',
+            'rwlock_tryrdlock',
+            'rwlock_trywrlock',
+            'rwlock_unlock',
+            'rwlock_wrlock'
+          ) | ForEach-Object {
+            if ($exportText -notmatch "\s$([regex]::Escape($_))\s") {
+              throw "expected XPDev export was not found: $_"
+            }
+          }
           if ($exportText -match '\s(alsa_api|getch|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_mutex_init_np|pthread_mutex_initializer_np|pu_api|sdl_fillbuf|sem_getvalue|sem_trywait_block|unix_beep|xp_mixer_pull|xp_sem_getvalue|xp_sem_setvalue|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)\s') {
             throw "internal or legacy implementation symbol was exported: $($Matches[1])"
           }
@@ -277,6 +290,10 @@ jobs:
           objdump -p "$core_dll" | grep -qi 'DLL Name:.*winpthread'
           export_names "$core_dll" | LC_ALL=C sort >build/mingw-core-exports.txt
           grep -qx xp_pthread_mutex_init build/mingw-core-exports.txt
+          for symbol in rwlock_destroy rwlock_init rwlock_rdlock \
+              rwlock_tryrdlock rwlock_trywrlock rwlock_unlock rwlock_wrlock; do
+            grep -qx "$symbol" build/mingw-core-exports.txt
+          done
           if grep -E \
               '^(alsa_api|getch|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_.*|pu_api|sdl_fillbuf|sem_getvalue|sem_trywait_block|unix_beep|xp_mixer_pull|xp_sem_getvalue|xp_sem_setvalue|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$' \
               build/mingw-core-exports.txt; then
@@ -386,6 +403,10 @@ jobs:
           grep -qx pthread_mutex_init build/mingw-win32-core-exports.txt
           grep -qx pthread_once build/mingw-win32-core-exports.txt
           grep -qx xp_pthread_mutex_init build/mingw-win32-core-exports.txt
+          for symbol in rwlock_destroy rwlock_init rwlock_rdlock \
+              rwlock_tryrdlock rwlock_trywrlock rwlock_unlock rwlock_wrlock; do
+            grep -qx "$symbol" build/mingw-win32-core-exports.txt
+          done
           if grep -E \
               '^(alsa_api|getch|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_.*_np|pu_api|sdl_fillbuf|sem_getvalue|sem_trywait_block|unix_beep|xp_mixer_pull|xp_sem_getvalue|xp_sem_setvalue|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$' \
               build/mingw-win32-core-exports.txt; then
