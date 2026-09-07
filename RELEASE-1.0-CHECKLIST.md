@@ -38,6 +38,11 @@ export/baseline check.
   - If they are not supported, remove the misleading `/MT` promise, document
     the shared-CRT requirement, and retain a CI test that rejects unsupported
     configurations cleanly.
+  - The current inventory, platform error-channel matrix, and concrete release
+    gates are in [`ERRNO-API-AUDIT.md`](ERRNO-API-AUDIT.md). In particular,
+    `get_errno()` is misleading after caller-side CRT failures under `/MT`, and
+    Windows CRT descriptors and `FILE *` objects cannot be repaired merely by
+    transporting an error number.
 - [ ] **P0: Make installed headers carry their ABI configuration without
   depending on CMake target flags.** `xpdev::shared` and `xpdev::static`
   propagate `XPDEV_USE_CONFIG_H` and the ABI-affecting definitions. A consumer
@@ -144,6 +149,11 @@ export/baseline check.
   `FILE *` between separate CRT instances is not safe merely because heap
   allocation has been fixed. Options include requiring a shared CRT, adding
   path/descriptor/handle-based APIs, or keeping stream operations caller-local.
+- [ ] **P0: Resolve CRT file descriptors crossing Windows CRT boundaries.**
+  `filetime()`, `xp_lockfile()`, `lock()`, `rdlock()`, and `unlock()` may
+  operate in the DLL on a descriptor created in an `/MT` caller. The DLL's
+  `fstat()` and `_get_osfhandle()` use a different descriptor table. Follow
+  the disposition and tests in [`ERRNO-API-AUDIT.md`](ERRNO-API-AUDIT.md).
 - [ ] **P1: Check other CRT-owned objects and state.** Include locale state,
   environment pointers, `DIR`/glob compatibility objects, `va_list`, and any
   object that is created by one module and operated on by another.
