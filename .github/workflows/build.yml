@@ -40,7 +40,8 @@ jobs:
             libasound2-dev \
             libpipewire-0.3-dev \
             libpulse-dev \
-            portaudio19-dev
+            portaudio19-dev \
+            pkg-config
 
       - name: Configure
         run: >-
@@ -87,6 +88,29 @@ jobs:
           cmake -E env \
             "LD_LIBRARY_PATH=$RUNNER_TEMP/xpdev-install/lib" \
             ctest --test-dir consumer-build --output-on-failure
+
+      - name: Verify installed pkg-config modules
+        run: |
+          export PKG_CONFIG_PATH="$RUNNER_TEMP/xpdev-install/lib/pkgconfig"
+          pkg-config --validate \
+            "$PKG_CONFIG_PATH/xpdev.pc" \
+            "$PKG_CONFIG_PATH/xpdev-comio.pc" \
+            "$PKG_CONFIG_PATH/xpdev-encode.pc" \
+            "$PKG_CONFIG_PATH/xpdev-hash.pc"
+          test "$(pkg-config --variable=audio_enabled xpdev)" = true
+          test "$(pkg-config --variable=audio_backends xpdev)" = \
+            PORTAUDIO,PIPEWIRE,PULSEAUDIO,ALSA,OSS
+          cc tests/pkg-config-consumer.c \
+            $(pkg-config --cflags --libs \
+              xpdev-comio xpdev-encode xpdev-hash) \
+            -o pkg-config-consumer-shared
+          LD_LIBRARY_PATH="$RUNNER_TEMP/xpdev-install/lib" \
+            ./pkg-config-consumer-shared
+          cc tests/pkg-config-consumer.c -Wl,-Bstatic \
+            $(pkg-config --cflags --libs --static \
+              xpdev-comio xpdev-encode xpdev-hash) \
+            -Wl,-Bdynamic -o pkg-config-consumer-static
+          ./pkg-config-consumer-static
 
   native-library-metadata:
     name: Native library metadata (${{ matrix.name }})
@@ -263,6 +287,16 @@ jobs:
             -DXPDEV_CONSUMER_EXPECT_AUDIO_BACKENDS=${{ matrix.expected_audio_backends }}
           cmake --build consumer-build --config Release
           ctest --test-dir consumer-build -C Release --output-on-failure
+          export PKG_CONFIG_PATH="$RUNNER_TEMP/xpdev-install/lib/pkgconfig"
+          pkg-config --validate "$PKG_CONFIG_PATH"/*.pc
+          pkg-config --libs --static xpdev \
+            | grep -q -- '-framework AudioToolbox'
+          cc tests/pkg-config-consumer.c \
+            $(pkg-config --cflags --libs \
+              xpdev-comio xpdev-encode xpdev-hash) \
+            -o pkg-config-consumer-shared
+          DYLD_LIBRARY_PATH="$RUNNER_TEMP/xpdev-install/lib" \
+            ./pkg-config-consumer-shared
 
       - name: Verify installed CMake package
         if: runner.os == 'Windows'
@@ -277,6 +311,33 @@ jobs:
           cmake --build consumer-build --config Release
           $env:PATH = "$(Join-Path $prefix 'bin');$env:PATH"
           ctest --test-dir consumer-build -C Release --output-on-failure
+
+          $pcdir = Join-Path $prefix 'lib\pkgconfig'
+          @(
+            'xpdev.pc',
+            'xpdev-static.pc',
+            'xpdev-comio.pc',
+            'xpdev-comio-static.pc',
+            'xpdev-encode.pc',
+            'xpdev-encode-static.pc',
+            'xpdev-hash.pc',
+            'xpdev-hash-static.pc'
+          ) | ForEach-Object {
+            if (-not (Test-Path (Join-Path $pcdir $_))) {
+              throw "pkg-config module was not installed: $_"
+            }
+          }
+          $dynamicPc = Get-Content -Raw (Join-Path $pcdir 'xpdev.pc')
+          if ($dynamicPc -notmatch '-lxpdev-1' -or
+              $dynamicPc -notmatch '-DWRAPPER_IMPORTS') {
+            throw 'xpdev.pc does not describe the DLL import interface'
+          }
+          $staticPc = Get-Content -Raw (Join-Path $pcdir 'xpdev-static.pc')
+          if ($staticPc -notmatch '-lxpdev_static' -or
+              $staticPc -match 'WRAPPER_IMPORTS' -or
+              $staticPc -notmatch '-liphlpapi') {
+            throw 'xpdev-static.pc does not describe the static interface'
+          }
 
   mingw-w64:
     name: MinGW-w64 UCRT64 system pthreads
@@ -301,6 +362,7 @@ jobs:
             toolchain:p
             cmake:p
             ninja:p
+            pkgconf:p
             portaudio:p
 
       - name: Configure
@@ -376,6 +438,31 @@ jobs:
           cmake --build consumer-build
           PATH="$prefix/bin:$PATH" \
             ctest --test-dir consumer-build --output-on-failure
+
+      - name: Verify installed pkg-config modules
+        run: |
+          prefix="$(cygpath -u "$RUNNER_TEMP")/xpdev-install"
+          export PKG_CONFIG_PATH="$prefix/lib/pkgconfig"
+          pkg-config --validate "$PKG_CONFIG_PATH"/*.pc
+          pkg-config --cflags xpdev | grep -q -- -DWRAPPER_IMPORTS
+          pkg-config --libs xpdev | grep -q -- -lxpdev-1
+          pkg-config --cflags xpdev-hash-static \
+            | grep -q -- -DXPDEV_HASH_STATIC
+          pkg-config --libs xpdev-static | grep -q -- -lxpdev_static
+          pkg-config --libs xpdev-static \
+            | grep -Eq -- '(^| )(-pthread|-l(win)?pthread)( |$)'
+          test "$(pkg-config --variable=audio_backends xpdev-static)" = \
+            WASAPI,PORTAUDIO
+          gcc tests/pkg-config-consumer.c \
+            $(pkg-config --cflags --libs \
+              xpdev-comio xpdev-encode xpdev-hash) \
+            -o pkg-config-consumer-shared.exe
+          PATH="$prefix/bin:$PATH" ./pkg-config-consumer-shared.exe
+          gcc tests/pkg-config-consumer.c \
+            $(pkg-config --cflags --libs \
+              xpdev-comio-static xpdev-encode-static xpdev-hash-static) \
+            -o pkg-config-consumer-static.exe
+          ./pkg-config-consumer-static.exe
 
   mingw-w64-win32-threads:
     name: MinGW-w64 Win32-thread wrappers
@@ -499,3 +586,10 @@ jobs:
           cmake --build consumer-build
           PATH="$prefix/bin:$PATH" \
             ctest --test-dir consumer-build --output-on-failure
+          test -f "$prefix/lib/pkgconfig/xpdev.pc"
+          test -f "$prefix/lib/pkgconfig/xpdev-static.pc"
+          grep -q -- '-lxpdev-1' "$prefix/lib/pkgconfig/xpdev.pc"
+          grep -q -- '-lxpdev_static' "$prefix/lib/pkgconfig/xpdev-static.pc"
+          ! grep -Ei '(^|[^[:alpha:]])(win)?pthread' \
+            "$prefix/lib/pkgconfig/xpdev.pc" \
+            "$prefix/lib/pkgconfig/xpdev-static.pc"

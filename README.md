@@ -162,6 +162,30 @@ endif()
 An audio-component mismatch is reported before installed targets are imported,
 so a fallback can create the normal xpdev target names without collisions.
 
+Installations also provide `xpdev`, `xpdev-comio`, `xpdev-encode`, and
+`xpdev-hash` pkg-config modules.  For example:
+
+```sh
+cc app.c $(pkg-config --cflags --libs xpdev xpdev-hash)
+```
+
+On Unix-like systems, pass `--static` while linking the static archives so
+pkg-config includes XPDev's private platform libraries.  Selecting the archive
+still belongs to the compiler driver or linker; `pkg-config --static` only
+expands the private dependency graph.
+
+Windows installations additionally provide `xpdev-static` and corresponding
+`xpdev-comio-static`, `xpdev-encode-static`, and `xpdev-hash-static` modules.
+The regular modules select the DLL import libraries and publish the required
+import definitions; the `-static` modules select XPDev's separately named
+static archives and publish their static definitions.  MinGW consumes their
+normal output, while pkgconf's `--msvc-syntax` option produces flags suitable
+for MSVC.
+
+Both core modules expose `audio_enabled` and `audio_backends` variables for
+non-CMake build systems.  Paths are relative to the installed `.pc` file,
+including when installation uses `cmake --install --prefix`.
+
 ## Memory ownership
 
 Heap allocations that cross an XPDev shared-library boundary must be released

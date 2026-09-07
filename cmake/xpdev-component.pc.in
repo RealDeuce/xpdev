@@ -1,0 +1,11 @@
+prefix=@XPDEV_PC_PREFIX@
+libdir=@XPDEV_PC_LIBDIR@
+includedir=@XPDEV_PC_INCLUDEDIR@
+
+Name: @XPDEV_PC_COMPONENT_NAME@
+Description: @XPDEV_PC_COMPONENT_DESCRIPTION@
+URL: https://github.com/RealDeuce/xpdev
+Version: @PROJECT_VERSION@
+Requires: @XPDEV_PC_COMPONENT_REQUIRES@
+Libs: -L${libdir} -l@XPDEV_PC_COMPONENT_LIBRARY@
+Cflags: @XPDEV_PC_COMPONENT_CFLAGS@
