@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -81,6 +82,7 @@ int main(void)
 	char version[64];
 #if XPDEV_USE_XP_SEMAPHORES
 	xp_sem_t sem;
+	xp_sem_t null_sem = NULL;
 	int sem_value;
 #endif
 
@@ -112,8 +114,23 @@ int main(void)
 		return 11;
 	if (xp_sem_wait(&sem) != 0)
 		return 12;
-	if (xp_sem_destroy(&sem) != 0)
+	errno = 0;
+	if (xp_sem_setvalue(&sem, -1) != -1 || errno != EINVAL)
 		return 13;
+	if (xp_sem_getvalue(&sem, &sem_value) != 0 || sem_value != 0)
+		return 14;
+	if (xp_sem_destroy(&sem) != 0)
+		return 15;
+	errno = 0;
+	if (xp_sem_wait(&null_sem) != -1 || errno != EINVAL)
+		return 16;
+	if (xp_sem_init(&sem, 0, UINT_MAX) != 0)
+		return 17;
+	errno = 0;
+	if (xp_sem_post(&sem) != -1 || errno != EOVERFLOW)
+		return 18;
+	if (xp_sem_destroy(&sem) != 0)
+		return 19;
 #endif
 	return 0;
 }
