@@ -36,11 +36,14 @@ On Unix, CMake uses the platform's native POSIX semaphore implementation when
 the complete API wrapped by `semwrap.h`, including `sem_timedwait()`, is
 declared and linkable. macOS deliberately uses XPDev's semaphore implementation:
 Darwin provides named POSIX semaphores, but its declared `sem_init()` for the
-required unnamed semaphores returns `ENOSYS`. The namespaced `xp_sem_*` API
-remains available on Unix regardless of which implementation `semwrap.h`
-selects. The generated header and CMake package report the selection through
-`XPDEV_USE_NATIVE_POSIX_SEMAPHORES`, `XPDEV_USE_XP_SEMAPHORES`,
-`xpdev_USE_NATIVE_POSIX_SEMAPHORES`, and `xpdev_USE_XP_SEMAPHORES`.
+required unnamed semaphores returns `ENOSYS`. The `xpsem` implementation and
+header are built and installed only on configurations requiring that fallback;
+its `xp_sem_*` functions are implementation details, not a portable XPDev API.
+The portable `xp_sem_trywait_block()` extension remains available for the
+`sem_t` selected by `semwrap.h`. The generated header and CMake package report
+the selection through `XPDEV_USE_NATIVE_POSIX_SEMAPHORES`,
+`XPDEV_USE_XP_SEMAPHORES`, `xpdev_USE_NATIVE_POSIX_SEMAPHORES`, and
+`xpdev_USE_XP_SEMAPHORES`.
 
 Use `cmake --install build --prefix <path>` to override the platform's default
 installation prefix.

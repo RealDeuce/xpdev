@@ -144,9 +144,8 @@ set(HEADER
 
 if(NOT WIN32)
 	list(APPEND SOURCE xpevent.c)
-	list(APPEND SOURCE xpsem.c)
-	# Unix-only implementation headers included by eventwrap.h and semwrap.h.
-	list(APPEND HEADER xpevent.h xpsem.h)
+	# Unix-only implementation header included by eventwrap.h.
+	list(APPEND HEADER xpevent.h)
 endif()
 
 check_symbol_exists(strlcpy string.h HAS_STRLCPY)
@@ -489,6 +488,11 @@ if(XPDEV_HAVE_COMPLETE_POSIX_SEMAPHORE_API AND NOT APPLE)
 	set(XPDEV_USE_NATIVE_POSIX_SEMAPHORES TRUE)
 elseif(UNIX)
 	set(XPDEV_USE_XP_SEMAPHORES TRUE)
+endif()
+if(XPDEV_USE_XP_SEMAPHORES)
+	# These are fallback implementation details rather than a portable API.
+	list(APPEND SOURCE xpsem.c)
+	list(APPEND HEADER xpsem.h)
 endif()
 set(XPDEV_NEEDS_STRLCPY FALSE)
 if(NOT HAS_STRLCPY)

@@ -20,7 +20,7 @@
 #include <xpdev/genwrap.h>
 #include <xpdev/hash/crc32.h>
 #include <xpdev/link_list.h>
-#if !defined(_WIN32)
+#if XPDEV_USE_XP_SEMAPHORES
 #include <xpdev/xpsem.h>
 #endif
 
@@ -79,7 +79,7 @@ int main(void)
 	char encoded[8];
 	char truncated[2];
 	char version[64];
-#if !defined(_WIN32)
+#if XPDEV_USE_XP_SEMAPHORES
 	xp_sem_t sem;
 	int sem_value;
 #endif
@@ -99,9 +99,8 @@ int main(void)
 		return 6;
 	if (strcmp(truncated, "a") != 0)
 		return 7;
-#if !defined(_WIN32)
-	/* The existing namespaced semaphore implementation remains available on
-	 * Unix independently of semwrap's native-versus-fallback selection. */
+#if XPDEV_USE_XP_SEMAPHORES
+	/* Exercise the conditional implementation used by semwrap's fallback. */
 	if (xp_sem_init(&sem, 0, 0) != 0)
 		return 8;
 	errno = 0;

@@ -44,6 +44,23 @@ jobs:
           ./.github/scripts/check-symbol-versions.sh build/hash/libxpdev-hash.so XPDEV_HASH_1.0
           ./.github/scripts/check-symbol-versions.sh build/encode/libxpdev-encode.so XPDEV_ENCODE_1.0
 
+          unexpected_xp_sem_exports="$(
+            readelf -W -s -D build/libxpdev.so \
+              | awk '
+                  $1 ~ /^[0-9]+:$/ && $7 != "UND" {
+                    name = $8
+                    sub(/@.*/, "", name)
+                    if (name ~ /^xp_sem_/ && name != "xp_sem_trywait_block")
+                      print name
+                  }' \
+              | sort -u
+          )"
+          if test -n "$unexpected_xp_sem_exports"; then
+            printf '%s\n' "$unexpected_xp_sem_exports" >&2
+            echo 'Native POSIX build exported XP semaphore fallback symbols' >&2
+            exit 1
+          fi
+
       - name: Verify installed CMake package
         run: |
           cmake --install build --prefix "$RUNNER_TEMP/xpdev-install"

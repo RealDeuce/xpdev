@@ -67,6 +67,16 @@ xpdev_check_boolean_metadata(xpdev_USE_NATIVE_POSIX_SEMAPHORES
 xpdev_check_boolean_metadata(xpdev_USE_XP_SEMAPHORES
 	XPDEV_USE_XP_SEMAPHORES xpdev_expected_xp_semaphores)
 
+set(xpdev_installed_xpsem_header "${xpdev_include_root}/xpdev/xpsem.h")
+if(xpdev_USE_XP_SEMAPHORES)
+	if(NOT EXISTS "${xpdev_installed_xpsem_header}")
+		message(FATAL_ERROR "The XP semaphore fallback header was not installed")
+	endif()
+elseif(EXISTS "${xpdev_installed_xpsem_header}")
+	message(FATAL_ERROR
+		"xpsem.h was installed even though the XP semaphore fallback is disabled")
+endif()
+
 if(xpdev_USE_NATIVE_POSIX_SEMAPHORES AND xpdev_USE_XP_SEMAPHORES)
 	message(FATAL_ERROR
 		"xpdev cannot use native POSIX and XPDev replacement semaphores together")

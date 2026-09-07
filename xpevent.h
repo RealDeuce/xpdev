@@ -30,10 +30,6 @@
 #include "gen_defs.h"
 #include "wrapdll.h"
 
-#if defined(__solaris__)
-#include "xpsem.h"  /* u_int32_t */
-#endif
-
 /* Opaque type definition. */
 struct xpevent;
 typedef struct xpevent *xpevent_t;
@@ -51,8 +47,8 @@ DLLEXPORT DWORD       WaitForEvent(xpevent_t event, DWORD ms);
 #endif
 
 struct xpevent {
-#define EVENT_MAGIC       ((u_int32_t) 0x09fa4014)
-	u_int32_t magic;
+#define EVENT_MAGIC       ((uint32_t) 0x09fa4014)
+	uint32_t magic;
 	pthread_mutex_t lock;
 	pthread_cond_t gtzero;
 	BOOL value;
