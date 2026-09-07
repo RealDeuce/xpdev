@@ -46,6 +46,37 @@ target_link_libraries(my_program PRIVATE xpdev::hash xpdev::encode)
 # Explicit alternatives: xpdev::hash_shared and xpdev::hash_static
 ```
 
+### Component API naming limitations
+
+The component APIs retain their upstream C symbol names. Some of those names,
+particularly in the hash and encoding APIs, are generic enough to collide with
+other implementations used by the same program. Splitting them into opt-in
+libraries limits the damage: an application that does not link a component does
+not acquire its symbols. It does not turn those symbols into a namespace.
+
+This distinction matters in several places:
+
+- A linker can still see an ambiguous or duplicate symbol when XPDev and
+  another library both provide the same base name.
+- Static archives have no symbol-version mechanism at all.
+- ELF version nodes identify the selected component after a dynamic link has
+  been resolved, but do not make the source-level or initial linker name
+  unique.
+- macOS and Windows export controls restrict which names are public, but do not
+  qualify the public names that remain.
+- Name-based lookup such as `dlsym()` still operates on the generic base name.
+
+Consumers should therefore link only the components they need and should not
+rely on the component split or ELF symbol versions to disambiguate two APIs
+with the same C name.
+
+XPDev deliberately does not invent prefixed aliases for these APIs. Synchronet
+may add namespaced replacements in the future, and those replacements may be
+part of the main XPDev library rather than these compatibility components.
+Choosing names or ownership pre-emptively here could conflict with that future
+upstream API. A later release can import upstream's namespaced interface while
+preserving whatever compatibility the released component ABI requires.
+
 The shared libraries use ABI SONAME 1. Their release filenames are versioned as
 `libxpdev.so.1.0`, `libxpdev-comio.so.1.0`, `libxpdev-hash.so.1.0`, and
 `libxpdev-encode.so.1.0` on ELF platforms, with the usual SONAME and development
