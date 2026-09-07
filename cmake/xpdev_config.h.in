@@ -12,6 +12,7 @@
 #cmakedefine01 XPDEV_LINK_LIST_THREADSAFE
 #cmakedefine01 XPDEV_THREAD_SAFE_ENABLED
 #cmakedefine01 XPDEV_USE_SYSTEM_PTHREADS
+#cmakedefine01 XPDEV_USE_NATIVE_POSIX_SEMAPHORES
 #cmakedefine01 XPDEV_USE_XP_SEMAPHORES
 #cmakedefine01 XPDEV_PREFER_POLL
 #cmakedefine01 XPDEV_NEEDS_STRLCPY
@@ -43,14 +44,28 @@
 #if XPDEV_HAS_STDINT_H && !defined(HAS_STDINT_H)
 #define HAS_STDINT_H 1
 #endif
-#if XPDEV_LINK_LIST_THREADSAFE && !defined(LINK_LIST_THREADSAFE)
+#if XPDEV_LINK_LIST_THREADSAFE
+#if !defined(LINK_LIST_THREADSAFE)
 #define LINK_LIST_THREADSAFE 1
 #endif
-#if XPDEV_THREAD_SAFE_ENABLED && !defined(XPDEV_THREAD_SAFE)
+#elif defined(LINK_LIST_THREADSAFE)
+#error "LINK_LIST_THREADSAFE conflicts with this XPDev library's ABI"
+#endif
+#if XPDEV_THREAD_SAFE_ENABLED
+#if !defined(XPDEV_THREAD_SAFE)
 #define XPDEV_THREAD_SAFE 1
 #endif
-#if XPDEV_USE_XP_SEMAPHORES && !defined(USE_XP_SEMAPHORES)
+#elif defined(XPDEV_THREAD_SAFE)
+#error "XPDEV_THREAD_SAFE conflicts with this XPDev library's configuration"
+#endif
+#if XPDEV_USE_XP_SEMAPHORES
+#if defined(USE_XP_SEMAPHORES) && !(USE_XP_SEMAPHORES)
+#error "USE_XP_SEMAPHORES conflicts with this XPDev library's ABI"
+#elif !defined(USE_XP_SEMAPHORES)
 #define USE_XP_SEMAPHORES 1
+#endif
+#elif defined(USE_XP_SEMAPHORES)
+#error "USE_XP_SEMAPHORES conflicts with this XPDev library's ABI"
 #endif
 #if XPDEV_PREFER_POLL && !defined(PREFER_POLL)
 #define PREFER_POLL 1

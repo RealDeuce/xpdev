@@ -49,6 +49,7 @@ jobs:
           cmake --install build --prefix "$RUNNER_TEMP/xpdev-install"
           cmake -S tests/package-consumer -B consumer-build \
             -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/xpdev-install" \
+            -DXPDEV_CONSUMER_REQUIRE_NATIVE_POSIX_SEMAPHORES=ON \
             -DXPDEV_CONSUMER_EXPECT_AUDIO_BACKENDS=PORTAUDIO,PIPEWIRE,PULSEAUDIO,ALSA,OSS
           cmake --build consumer-build
           cmake -E env \
@@ -179,6 +180,7 @@ jobs:
             --prefix "$RUNNER_TEMP/xpdev-install"
           cmake -S tests/package-consumer -B consumer-build \
             -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/xpdev-install" \
+            -DXPDEV_CONSUMER_REQUIRE_XP_SEMAPHORES=ON \
             -DXPDEV_CONSUMER_EXPECT_AUDIO_BACKENDS=${{ matrix.expected_audio_backends }}
           cmake --build consumer-build --config Release
           ctest --test-dir consumer-build -C Release --output-on-failure

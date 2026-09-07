@@ -25,6 +25,7 @@ set(WITHOUT_COREAUDIO OFF CACHE BOOL "Disable Core Audio (macOS)")
 
 include(CheckSymbolExists)
 include(CheckIncludeFiles)
+include(CheckCSourceCompiles)
 find_package(Threads REQUIRED)
 if(WIN32)
 	set(XPDEV_USE_SYSTEM_PTHREADS OFF CACHE BOOL
@@ -179,6 +180,9 @@ function(xpdev_configure_target target)
 	target_link_libraries(${target} PUBLIC ${CMAKE_DL_LIBS})
 	if(XPDEV_USE_SYSTEM_PTHREADS)
 		target_link_libraries(${target} PUBLIC Threads::Threads)
+	endif()
+	if(XPDEV_POSIX_SEMAPHORE_LIBRARY)
+		target_link_libraries(${target} PUBLIC ${XPDEV_POSIX_SEMAPHORE_LIBRARY})
 	endif()
 
 	if(WIN32)
@@ -426,11 +430,65 @@ set(XPDEV_HAS_INTTYPES_H ${HAS_INTTYPES_H})
 set(XPDEV_HAS_STDINT_H ${HAS_STDINT_H})
 set(XPDEV_LINK_LIST_THREADSAFE TRUE)
 set(XPDEV_THREAD_SAFE_ENABLED TRUE)
+set(XPDEV_USE_NATIVE_POSIX_SEMAPHORES FALSE)
 set(XPDEV_USE_XP_SEMAPHORES FALSE)
 set(XPDEV_PREFER_POLL FALSE)
 if(NOT WIN32)
-	set(XPDEV_USE_XP_SEMAPHORES TRUE)
 	set(XPDEV_PREFER_POLL TRUE)
+endif()
+
+# semwrap.h can use the platform's POSIX semaphore ABI only when the complete
+# API it wraps is declared and linkable.  Darwin is deliberately excluded:
+# it declares sem_init(), but Apple's implementation returns ENOSYS because
+# unnamed POSIX semaphores are not supported.
+set(XPDEV_COMPLETE_POSIX_SEMAPHORE_TEST [=[
+#define _POSIX_C_SOURCE 200112L
+#include <fcntl.h>
+#include <semaphore.h>
+#include <sys/stat.h>
+#include <time.h>
+int main(void)
+{
+	sem_t sem;
+	sem_t *named;
+	struct timespec timeout = {0, 0};
+	int value;
+	(void)sem_init(&sem, 0, 0);
+	(void)sem_destroy(&sem);
+	named = sem_open("/xpdev-cmake-probe", O_CREAT, 0600, 0);
+	(void)sem_close(named);
+	(void)sem_unlink("/xpdev-cmake-probe");
+	(void)sem_wait(&sem);
+	(void)sem_trywait(&sem);
+	(void)sem_post(&sem);
+	(void)sem_getvalue(&sem, &value);
+	(void)sem_timedwait(&sem, &timeout);
+	return 0;
+}
+]=])
+if(UNIX AND NOT APPLE)
+	set(XPDEV_SAVED_CMAKE_REQUIRED_LIBRARIES "${CMAKE_REQUIRED_LIBRARIES}")
+	set(CMAKE_REQUIRED_LIBRARIES ${CMAKE_THREAD_LIBS_INIT})
+	check_c_source_compiles("${XPDEV_COMPLETE_POSIX_SEMAPHORE_TEST}"
+		XPDEV_HAVE_COMPLETE_POSIX_SEMAPHORE_API)
+	if(NOT XPDEV_HAVE_COMPLETE_POSIX_SEMAPHORE_API)
+		set(CMAKE_REQUIRED_LIBRARIES ${CMAKE_THREAD_LIBS_INIT} rt)
+		check_c_source_compiles("${XPDEV_COMPLETE_POSIX_SEMAPHORE_TEST}"
+			XPDEV_HAVE_COMPLETE_POSIX_SEMAPHORE_API_WITH_RT)
+		if(XPDEV_HAVE_COMPLETE_POSIX_SEMAPHORE_API_WITH_RT)
+			set(XPDEV_HAVE_COMPLETE_POSIX_SEMAPHORE_API TRUE)
+			set(XPDEV_POSIX_SEMAPHORE_LIBRARY rt)
+		endif()
+	endif()
+	set(CMAKE_REQUIRED_LIBRARIES "${XPDEV_SAVED_CMAKE_REQUIRED_LIBRARIES}")
+	unset(XPDEV_SAVED_CMAKE_REQUIRED_LIBRARIES)
+endif()
+unset(XPDEV_COMPLETE_POSIX_SEMAPHORE_TEST)
+
+if(XPDEV_HAVE_COMPLETE_POSIX_SEMAPHORE_API AND NOT APPLE)
+	set(XPDEV_USE_NATIVE_POSIX_SEMAPHORES TRUE)
+elseif(UNIX)
+	set(XPDEV_USE_XP_SEMAPHORES TRUE)
 endif()
 set(XPDEV_NEEDS_STRLCPY FALSE)
 if(NOT HAS_STRLCPY)

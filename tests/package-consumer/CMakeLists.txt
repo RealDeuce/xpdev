@@ -41,6 +41,76 @@ endif()
 
 # Keep the generated public header and CMake package metadata in agreement.
 file(READ "${xpdev_include_root}/xpdev/xpdev_config.h" xpdev_config_header)
+
+function(xpdev_check_boolean_metadata cmake_variable header_macro
+		expected_variable)
+	set(expected_value 0)
+	if(${cmake_variable})
+		set(expected_value 1)
+	endif()
+	if(NOT xpdev_config_header MATCHES
+			"#define ${header_macro} ${expected_value}([\r\n]|$)")
+		message(FATAL_ERROR
+			"${cmake_variable} disagrees with ${header_macro} in xpdev_config.h")
+	endif()
+	set(${expected_variable} ${expected_value} PARENT_SCOPE)
+endfunction()
+
+xpdev_check_boolean_metadata(xpdev_LINK_LIST_THREADSAFE
+	XPDEV_LINK_LIST_THREADSAFE xpdev_expected_link_list_threadsafe)
+xpdev_check_boolean_metadata(xpdev_THREAD_SAFE
+	XPDEV_THREAD_SAFE_ENABLED xpdev_expected_thread_safe)
+xpdev_check_boolean_metadata(xpdev_USE_SYSTEM_PTHREADS
+	XPDEV_USE_SYSTEM_PTHREADS xpdev_expected_system_pthreads)
+xpdev_check_boolean_metadata(xpdev_USE_NATIVE_POSIX_SEMAPHORES
+	XPDEV_USE_NATIVE_POSIX_SEMAPHORES xpdev_expected_native_posix_semaphores)
+xpdev_check_boolean_metadata(xpdev_USE_XP_SEMAPHORES
+	XPDEV_USE_XP_SEMAPHORES xpdev_expected_xp_semaphores)
+
+if(xpdev_USE_NATIVE_POSIX_SEMAPHORES AND xpdev_USE_XP_SEMAPHORES)
+	message(FATAL_ERROR
+		"xpdev cannot use native POSIX and XPDev replacement semaphores together")
+endif()
+if(XPDEV_CONSUMER_REQUIRE_NATIVE_POSIX_SEMAPHORES
+		AND NOT xpdev_USE_NATIVE_POSIX_SEMAPHORES)
+	message(FATAL_ERROR "The installed xpdev package does not use native POSIX semaphores")
+endif()
+if(XPDEV_CONSUMER_REQUIRE_XP_SEMAPHORES AND NOT xpdev_USE_XP_SEMAPHORES)
+	message(FATAL_ERROR "The installed xpdev package does not use XPDev semaphores")
+endif()
+
+# Reject attempts to change the semaphore type selected when the library was
+# built.  Defining the legacy switch is a conflict for native builds; forcing
+# it to zero is a conflict for XP semaphore builds.
+set(conflicting_semaphore_source
+	"${CMAKE_CURRENT_BINARY_DIR}/conflicting_xp_semaphores.c")
+file(WRITE "${conflicting_semaphore_source}"
+	"#include <xpdev/semwrap.h>\nint main(void) { return 0; }\n")
+if(xpdev_USE_XP_SEMAPHORES)
+	set(conflicting_semaphore_definition -DUSE_XP_SEMAPHORES=0)
+else()
+	set(conflicting_semaphore_definition -DUSE_XP_SEMAPHORES)
+endif()
+try_compile(xpdev_accepted_conflicting_xp_semaphores
+	"${CMAKE_CURRENT_BINARY_DIR}/conflicting_xp_semaphores_build"
+	"${conflicting_semaphore_source}"
+	CMAKE_FLAGS "-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY"
+	COMPILE_DEFINITIONS ${conflicting_semaphore_definition}
+	LINK_LIBRARIES xpdev::shared
+	OUTPUT_VARIABLE conflicting_semaphore_output)
+if(xpdev_accepted_conflicting_xp_semaphores)
+	message(FATAL_ERROR
+		"xpdev_config.h accepted an ABI-incompatible USE_XP_SEMAPHORES")
+endif()
+if(NOT conflicting_semaphore_output MATCHES
+		"USE_XP_SEMAPHORES conflicts with this XPDev library's ABI")
+	message(FATAL_ERROR
+		"The conflicting USE_XP_SEMAPHORES probe failed for an unexpected reason:\n"
+		"${conflicting_semaphore_output}")
+endif()
+message(STATUS
+	"Verified rejection of an ABI-incompatible USE_XP_SEMAPHORES")
+
 foreach(backend IN LISTS xpdev_known_audio_backends)
 	set(cmake_backend ${backend})
 	if(backend STREQUAL "SDL")
@@ -89,6 +159,12 @@ enable_testing()
 
 foreach(linkage IN ITEMS shared static)
 	add_executable(xpdev_${linkage}_consumer consumer.c)
+	target_compile_definitions(xpdev_${linkage}_consumer PRIVATE
+		XPDEV_CONSUMER_EXPECT_LINK_LIST_THREADSAFE=${xpdev_expected_link_list_threadsafe}
+		XPDEV_CONSUMER_EXPECT_THREAD_SAFE=${xpdev_expected_thread_safe}
+		XPDEV_CONSUMER_EXPECT_SYSTEM_PTHREADS=${xpdev_expected_system_pthreads}
+		XPDEV_CONSUMER_EXPECT_NATIVE_POSIX_SEMAPHORES=${xpdev_expected_native_posix_semaphores}
+		XPDEV_CONSUMER_EXPECT_XP_SEMAPHORES=${xpdev_expected_xp_semaphores})
 	target_link_libraries(xpdev_${linkage}_consumer PRIVATE
 		xpdev::comio_${linkage}
 		xpdev::encode_${linkage}

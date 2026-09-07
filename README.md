@@ -31,6 +31,17 @@ entry-point requirements on platforms with direct audio support.
 Windows builds prefer XPDev's thin Win32 pthread compatibility implementation.
 Set `XPDEV_USE_SYSTEM_PTHREADS=ON` to use a detected POSIX pthread library when
 interoperability with that implementation is required.
+
+On Unix, CMake uses the platform's native POSIX semaphore implementation when
+the complete API wrapped by `semwrap.h`, including `sem_timedwait()`, is
+declared and linkable. macOS deliberately uses XPDev's semaphore implementation:
+Darwin provides named POSIX semaphores, but its declared `sem_init()` for the
+required unnamed semaphores returns `ENOSYS`. The namespaced `xp_sem_*` API
+remains available on Unix regardless of which implementation `semwrap.h`
+selects. The generated header and CMake package report the selection through
+`XPDEV_USE_NATIVE_POSIX_SEMAPHORES`, `XPDEV_USE_XP_SEMAPHORES`,
+`xpdev_USE_NATIVE_POSIX_SEMAPHORES`, and `xpdev_USE_XP_SEMAPHORES`.
+
 Use `cmake --install build --prefix <path>` to override the platform's default
 installation prefix.
 
@@ -114,7 +125,10 @@ library's expected `XPDEV_*` version.
 Public headers are installed under `include/xpdev` and can be included as, for
 example, `#include <xpdev/genwrap.h>`. They automatically include the generated
 `xpdev_config.h` where needed, preserving the feature macros used to compile the
-library. The header also provides stable `XPDEV_*` capability macros.
+library. The header also provides stable `XPDEV_*` capability macros. ABI-
+affecting choices such as linked-list thread safety and the semaphore type must
+not be overridden by consumers; the generated header rejects conflicting
+legacy definitions.
 
 The installed CMake package exposes the same configuration through variables
 such as `xpdev_AUDIO_ENABLED`, `xpdev_AUDIO_BACKENDS`, `xpdev_HAS_STDINT_H`, and

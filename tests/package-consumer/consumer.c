@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -18,6 +19,53 @@
 #include <xpdev/encode/base64.h>
 #include <xpdev/genwrap.h>
 #include <xpdev/hash/crc32.h>
+#include <xpdev/link_list.h>
+#if !defined(_WIN32)
+#include <xpdev/xpsem.h>
+#endif
+
+#if XPDEV_LINK_LIST_THREADSAFE != XPDEV_CONSUMER_EXPECT_LINK_LIST_THREADSAFE
+	#error "XPDev linked-list ABI metadata does not match its public header"
+#endif
+#if XPDEV_THREAD_SAFE_ENABLED != XPDEV_CONSUMER_EXPECT_THREAD_SAFE
+	#error "XPDev thread-safety metadata does not match its public header"
+#endif
+#if XPDEV_USE_SYSTEM_PTHREADS != XPDEV_CONSUMER_EXPECT_SYSTEM_PTHREADS
+	#error "XPDev pthread metadata does not match its public header"
+#endif
+#if XPDEV_USE_NATIVE_POSIX_SEMAPHORES != XPDEV_CONSUMER_EXPECT_NATIVE_POSIX_SEMAPHORES
+	#error "XPDev native POSIX semaphore metadata does not match its public header"
+#endif
+#if XPDEV_USE_XP_SEMAPHORES != XPDEV_CONSUMER_EXPECT_XP_SEMAPHORES
+	#error "XPDev semaphore ABI metadata does not match its public header"
+#endif
+#if XPDEV_USE_NATIVE_POSIX_SEMAPHORES && XPDEV_USE_XP_SEMAPHORES
+	#error "XPDev selected two incompatible semaphore implementations"
+#endif
+
+#if XPDEV_LINK_LIST_THREADSAFE
+	#ifndef LINK_LIST_THREADSAFE
+		#error "XPDev CMake target did not propagate LINK_LIST_THREADSAFE"
+	#endif
+#elif defined(LINK_LIST_THREADSAFE)
+	#error "XPDev CMake target propagated an incompatible LINK_LIST_THREADSAFE"
+#endif
+
+#if XPDEV_THREAD_SAFE_ENABLED
+	#ifndef XPDEV_THREAD_SAFE
+		#error "XPDev CMake target did not propagate XPDEV_THREAD_SAFE"
+	#endif
+#elif defined(XPDEV_THREAD_SAFE)
+	#error "XPDev CMake target propagated an incompatible XPDEV_THREAD_SAFE"
+#endif
+
+#if XPDEV_USE_XP_SEMAPHORES
+	#ifndef USE_XP_SEMAPHORES
+		#error "XPDev CMake target did not propagate USE_XP_SEMAPHORES"
+	#endif
+#elif defined(USE_XP_SEMAPHORES)
+	#error "XPDev CMake target propagated an incompatible USE_XP_SEMAPHORES"
+#endif
 
 #ifdef snprintf
 	#error "XPDev public headers must not redefine snprintf"
@@ -31,6 +79,10 @@ int main(void)
 	char encoded[8];
 	char truncated[2];
 	char version[64];
+#if !defined(_WIN32)
+	xp_sem_t sem;
+	int sem_value;
+#endif
 
 	if (comVersion(version, sizeof(version)) != version || version[0] == '\0')
 		return 1;
@@ -47,5 +99,22 @@ int main(void)
 		return 6;
 	if (strcmp(truncated, "a") != 0)
 		return 7;
+#if !defined(_WIN32)
+	/* The existing namespaced semaphore implementation remains available on
+	 * Unix independently of semwrap's native-versus-fallback selection. */
+	if (xp_sem_init(&sem, 0, 0) != 0)
+		return 8;
+	errno = 0;
+	if (xp_sem_trywait(&sem) != -1 || errno != EAGAIN)
+		return 9;
+	if (xp_sem_post(&sem) != 0)
+		return 10;
+	if (xp_sem_getvalue(&sem, &sem_value) != 0 || sem_value != 1)
+		return 11;
+	if (xp_sem_wait(&sem) != 0)
+		return 12;
+	if (xp_sem_destroy(&sem) != 0)
+		return 13;
+#endif
 	return 0;
 }
