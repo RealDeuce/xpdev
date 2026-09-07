@@ -25,6 +25,7 @@
 #if !defined(__BORLANDC__)
 
 #include <stdarg.h>
+#include <stddef.h>
 #include "wrapdll.h"
 
 /* Supported printf argument types */

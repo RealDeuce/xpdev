@@ -22,8 +22,8 @@
 #ifndef _COMIO_H
 #define _COMIO_H
 
-#include <limits.h> /* INT_MAX */
-#include <gen_defs.h>   /* bool */
+#include <limits.h>     /* INT_MAX */
+#include "../gen_defs.h"
 
 #define COM_ERROR                       -1
 #define COM_INFINITE_TIMEOUT    INT_MIN

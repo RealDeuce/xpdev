@@ -36,7 +36,8 @@
 	#define LZHEXPORT
 #endif
 
-#include "gen_defs.h"
+#include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {

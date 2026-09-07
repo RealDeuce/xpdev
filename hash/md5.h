@@ -31,7 +31,7 @@ documentation and/or software.
 #define H__MD5
 
 #include <stddef.h>     /* size_t */
-#include <gen_defs.h>   /* uint32_t */
+#include <stdint.h>     /* uint32_t */
 
 #define MD5_DIGEST_SIZE     16
 

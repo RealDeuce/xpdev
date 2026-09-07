@@ -22,7 +22,8 @@
 #ifndef _CRC16_H_
 #define _CRC16_H_
 
-#include "gen_defs.h"
+#include <stddef.h>
+#include <stdint.h>
 #include "hash_export.h"
 
 #ifdef __cplusplus

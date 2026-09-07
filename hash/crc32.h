@@ -22,8 +22,9 @@
 #ifndef _CRC32_H_
 #define _CRC32_H_
 
-#include <stdio.h>  /* FILE */
-#include "gen_defs.h"   /* uint32_t */
+#include <stddef.h>     /* size_t */
+#include <stdint.h>     /* int32_t, uint32_t */
+#include <stdio.h>      /* FILE */
 #include "hash_export.h"
 
 #ifdef __cplusplus

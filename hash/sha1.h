@@ -8,7 +8,7 @@
  */
 
 #include <stddef.h>     /* size_t */
-#include <gen_defs.h>   /* uint32_t */
+#include <stdint.h>     /* uint8_t, uint32_t */
 #include "hash_export.h"
 
 #define SHA1_DIGEST_SIZE 20

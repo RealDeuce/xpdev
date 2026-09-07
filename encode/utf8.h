@@ -22,9 +22,9 @@
 #ifndef UTF8_H_
 #define UTF8_H_
 
-#include <stdlib.h>
-#include "gen_defs.h" // bool
-#include "unicode_defs.h"
+#include <stdbool.h>
+#include <stddef.h>
+#include "../unicode_defs.h"
 #include "encode_export.h"
 
 #define UTF8_MAX_LEN 6  // Longest possible UTF-8 sequence

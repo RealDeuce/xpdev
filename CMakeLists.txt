@@ -102,15 +102,15 @@ set(HEADER
 	xpbeep.h
 	xpdatetime.h
 	xpendian.h
-	xpevent.h
 	xpmap.h
 	xpprintf.h
-	xpsem.h
 )
 
 if(NOT WIN32)
 	list(APPEND SOURCE xpevent.c)
 	list(APPEND SOURCE xpsem.c)
+	# Unix-only implementation headers included by eventwrap.h and semwrap.h.
+	list(APPEND HEADER xpevent.h xpsem.h)
 endif()
 
 check_symbol_exists(strlcpy string.h HAS_STRLCPY)
@@ -488,8 +488,7 @@ function(xpdev_add_component component)
 		target_compile_features(${target} PUBLIC c_std_11)
 		target_include_directories(${target} PUBLIC
 			$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-			$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-			$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/xpdev>)
+			$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 	endforeach()
 	target_link_libraries(${static_target} PUBLIC xpdev_static_library)
 	target_link_libraries(${shared_target} PUBLIC xpdev_shared_library)
