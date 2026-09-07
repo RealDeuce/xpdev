@@ -24,6 +24,10 @@ cmake --install build
 Optional audio backends can be disabled at configure time with the
 `WITHOUT_ALSA`, `WITHOUT_COREAUDIO`, `WITHOUT_OSS`, `WITHOUT_PIPEWIRE`,
 `WITHOUT_PORTAUDIO`, `WITHOUT_PULSEAUDIO`, and `WITHOUT_SDL_AUDIO` options.
+SDL audio is a fallback: it is enabled only when no native or dedicated audio
+backend was detected and an SDL2-compatible development package is available.
+This currently makes SDL the normal backend on Haiku without imposing its
+entry-point requirements on platforms with direct audio support.
 Use `cmake --install build --prefix <path>` to override the platform's default
 installation prefix.
 
