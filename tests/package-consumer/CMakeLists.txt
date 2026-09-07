@@ -176,6 +176,10 @@ if(WIN32)
 	target_link_libraries(xpdev_windows_wrapper_consumer PRIVATE xpdev::static)
 	add_test(NAME xpdev_windows_wrapper_consumer
 		COMMAND xpdev_windows_wrapper_consumer)
+elseif(UNIX)
+	add_executable(xpdev_event_consumer consumer_event.c)
+	target_link_libraries(xpdev_event_consumer PRIVATE xpdev::shared)
+	add_test(NAME xpdev_event_consumer COMMAND xpdev_event_consumer)
 endif()
 
 foreach(linkage IN ITEMS shared static)
