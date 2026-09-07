@@ -7,5 +7,5 @@ Description: @XPDEV_PC_COMPONENT_DESCRIPTION@
 URL: https://github.com/RealDeuce/xpdev
 Version: @PROJECT_VERSION@
 Requires: @XPDEV_PC_COMPONENT_REQUIRES@
-Libs: -L${libdir} -l@XPDEV_PC_COMPONENT_LIBRARY@
+Libs: -L${libdir} @XPDEV_PC_COMPONENT_LIBRARY_LINK@
 Cflags: @XPDEV_PC_COMPONENT_CFLAGS@

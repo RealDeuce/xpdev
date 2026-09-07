@@ -812,7 +812,8 @@ if(UNIX OR WIN32)
 	set(XPDEV_PC_FILES "")
 	if(WIN32)
 		set(XPDEV_PC_NAME "XPDev")
-		set(XPDEV_PC_LIBRARY "xpdev-${PROJECT_VERSION_MAJOR}")
+		set(XPDEV_PC_LIBRARY_LINK
+			"-lxpdev-${PROJECT_VERSION_MAJOR}")
 		set(XPDEV_PC_LINK_LIBS "")
 		if(XPDEV_PC_PUBLIC_LIBS)
 			set(XPDEV_PC_LINK_LIBS " ${XPDEV_PC_PUBLIC_LIBS}")
@@ -824,7 +825,7 @@ if(UNIX OR WIN32)
 			${CMAKE_CURRENT_BINARY_DIR}/xpdev.pc)
 
 		set(XPDEV_PC_NAME "XPDev static")
-		set(XPDEV_PC_LIBRARY "xpdev_static")
+		set(XPDEV_PC_LIBRARY_LINK "-lxpdev_static")
 		string(STRIP
 			"${XPDEV_PC_PUBLIC_LIBS} ${XPDEV_PC_PRIVATE_LIBS}"
 			XPDEV_PC_LINK_LIBS)
@@ -838,7 +839,7 @@ if(UNIX OR WIN32)
 			${CMAKE_CURRENT_BINARY_DIR}/xpdev-static.pc)
 	else()
 		set(XPDEV_PC_NAME "XPDev")
-		set(XPDEV_PC_LIBRARY "xpdev")
+		set(XPDEV_PC_LIBRARY_LINK "-lxpdev")
 		set(XPDEV_PC_LINK_LIBS "")
 		if(XPDEV_PC_PUBLIC_LIBS)
 			set(XPDEV_PC_LINK_LIBS " ${XPDEV_PC_PUBLIC_LIBS}")
@@ -852,6 +853,21 @@ if(UNIX OR WIN32)
 		configure_file(cmake/xpdev.pc.in xpdev.pc @ONLY)
 		list(APPEND XPDEV_PC_FILES
 			${CMAKE_CURRENT_BINARY_DIR}/xpdev.pc)
+
+		set(XPDEV_PC_NAME "XPDev static")
+		set(XPDEV_PC_LIBRARY_LINK
+			"\${libdir}/${CMAKE_STATIC_LIBRARY_PREFIX}xpdev${CMAKE_STATIC_LIBRARY_SUFFIX}")
+		string(STRIP
+			"${XPDEV_PC_PUBLIC_LIBS} ${XPDEV_PC_PRIVATE_LIBS}"
+			XPDEV_PC_LINK_LIBS)
+		if(XPDEV_PC_LINK_LIBS)
+			set(XPDEV_PC_LINK_LIBS " ${XPDEV_PC_LINK_LIBS}")
+		endif()
+		set(XPDEV_PC_FILE_PRIVATE_LIBS "")
+		set(XPDEV_PC_VARIANT_CFLAGS "")
+		configure_file(cmake/xpdev.pc.in xpdev-static.pc @ONLY)
+		list(APPEND XPDEV_PC_FILES
+			${CMAKE_CURRENT_BINARY_DIR}/xpdev-static.pc)
 	endif()
 
 	foreach(component IN ITEMS comio encode hash)
@@ -868,11 +884,11 @@ if(UNIX OR WIN32)
 		endif()
 		set(XPDEV_PC_COMPONENT_NAME "XPDev ${component}")
 		set(XPDEV_PC_COMPONENT_REQUIRES "xpdev = ${PROJECT_VERSION}")
-		set(XPDEV_PC_COMPONENT_LIBRARY "xpdev-${component}")
+		set(XPDEV_PC_COMPONENT_LIBRARY_LINK "-lxpdev-${component}")
 		set(XPDEV_PC_COMPONENT_CFLAGS "")
 		if(WIN32)
-			set(XPDEV_PC_COMPONENT_LIBRARY
-				"xpdev-${component}-${PROJECT_VERSION_MAJOR}")
+			set(XPDEV_PC_COMPONENT_LIBRARY_LINK
+				"-lxpdev-${component}-${PROJECT_VERSION_MAJOR}")
 			if(component STREQUAL "comio")
 				set(XPDEV_PC_COMPONENT_CFLAGS "-DCOMIO_IMPORTS")
 			elseif(component STREQUAL "encode")
@@ -888,22 +904,26 @@ if(UNIX OR WIN32)
 		list(APPEND XPDEV_PC_FILES
 			${CMAKE_CURRENT_BINARY_DIR}/xpdev-${component}.pc)
 
+		set(XPDEV_PC_COMPONENT_NAME "XPDev ${component} static")
+		set(XPDEV_PC_COMPONENT_REQUIRES
+			"xpdev-static = ${PROJECT_VERSION}")
+		set(XPDEV_PC_COMPONENT_CFLAGS "")
 		if(WIN32)
-			set(XPDEV_PC_COMPONENT_NAME "XPDev ${component} static")
-			set(XPDEV_PC_COMPONENT_REQUIRES
-				"xpdev-static = ${PROJECT_VERSION}")
-			set(XPDEV_PC_COMPONENT_LIBRARY "xpdev-${component}_static")
-			set(XPDEV_PC_COMPONENT_CFLAGS "")
+			set(XPDEV_PC_COMPONENT_LIBRARY_LINK
+				"-lxpdev-${component}_static")
 			if(component STREQUAL "encode")
 				set(XPDEV_PC_COMPONENT_CFLAGS "-DXPDEV_ENCODE_STATIC")
 			elseif(component STREQUAL "hash")
 				set(XPDEV_PC_COMPONENT_CFLAGS "-DXPDEV_HASH_STATIC")
 			endif()
-			configure_file(cmake/xpdev-component.pc.in
-				"xpdev-${component}-static.pc" @ONLY)
-			list(APPEND XPDEV_PC_FILES
-				${CMAKE_CURRENT_BINARY_DIR}/xpdev-${component}-static.pc)
+		else()
+			set(XPDEV_PC_COMPONENT_LIBRARY_LINK
+				"\${libdir}/${CMAKE_STATIC_LIBRARY_PREFIX}xpdev-${component}${CMAKE_STATIC_LIBRARY_SUFFIX}")
 		endif()
+		configure_file(cmake/xpdev-component.pc.in
+			"xpdev-${component}-static.pc" @ONLY)
+		list(APPEND XPDEV_PC_FILES
+			${CMAKE_CURRENT_BINARY_DIR}/xpdev-${component}-static.pc)
 	endforeach()
 endif()
 

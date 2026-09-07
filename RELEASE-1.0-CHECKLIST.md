@@ -218,10 +218,12 @@ export/baseline check.
 - [ ] **P0: Verify relocatable installs.** Test a staged `DESTDIR`, a non-default
   prefix, a non-default `CMAKE_INSTALL_LIBDIR`, moving the install tree, and
   both single- and multi-config generators.
-- [ ] **P1: Decide whether to provide `pkg-config` metadata.** CMake remains the
-  only build system, but system-wide C libraries are commonly consumed without
-  CMake. If unsupported, say so explicitly rather than leaving manual users to
-  infer flags.
+- [x] **P1: Provide and test `pkg-config` metadata.** Installations provide
+  shared and explicit `-static` modules for core, comio, encode, and hash, with
+  complete static-link dependencies and relocatable paths. Windows modules
+  distinguish its separately named static archives and DLL import libraries
+  and their different consumer definitions. CI validates the metadata and
+  exercises native, MSVC, and MinGW consumers.
 - [ ] **P1: Clean harmless CMake/workflow duplication.** There are duplicated
   Haiku link-library calls, duplicated `static_target` assignment, and a
   duplicated macOS consumer build command. Add linting so these do not

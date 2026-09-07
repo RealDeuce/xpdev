@@ -91,26 +91,9 @@ jobs:
 
       - name: Verify installed pkg-config modules
         run: |
-          export PKG_CONFIG_PATH="$RUNNER_TEMP/xpdev-install/lib/pkgconfig"
-          pkg-config --validate \
-            "$PKG_CONFIG_PATH/xpdev.pc" \
-            "$PKG_CONFIG_PATH/xpdev-comio.pc" \
-            "$PKG_CONFIG_PATH/xpdev-encode.pc" \
-            "$PKG_CONFIG_PATH/xpdev-hash.pc"
-          test "$(pkg-config --variable=audio_enabled xpdev)" = true
-          test "$(pkg-config --variable=audio_backends xpdev)" = \
+          ./.github/scripts/test-pkg-config-consumers.sh \
+            "$RUNNER_TEMP/xpdev-install" \
             PORTAUDIO,PIPEWIRE,PULSEAUDIO,ALSA,OSS
-          cc tests/pkg-config-consumer.c \
-            $(pkg-config --cflags --libs \
-              xpdev-comio xpdev-encode xpdev-hash) \
-            -o pkg-config-consumer-shared
-          LD_LIBRARY_PATH="$RUNNER_TEMP/xpdev-install/lib" \
-            ./pkg-config-consumer-shared
-          cc tests/pkg-config-consumer.c -Wl,-Bstatic \
-            $(pkg-config --cflags --libs --static \
-              xpdev-comio xpdev-encode xpdev-hash) \
-            -Wl,-Bdynamic -o pkg-config-consumer-static
-          ./pkg-config-consumer-static
 
   native-library-metadata:
     name: Native library metadata (${{ matrix.name }})
@@ -291,12 +274,9 @@ jobs:
           pkg-config --validate "$PKG_CONFIG_PATH"/*.pc
           pkg-config --libs --static xpdev \
             | grep -q -- '-framework AudioToolbox'
-          cc tests/pkg-config-consumer.c \
-            $(pkg-config --cflags --libs \
-              xpdev-comio xpdev-encode xpdev-hash) \
-            -o pkg-config-consumer-shared
-          DYLD_LIBRARY_PATH="$RUNNER_TEMP/xpdev-install/lib" \
-            ./pkg-config-consumer-shared
+          ./.github/scripts/test-pkg-config-consumers.sh \
+            "$RUNNER_TEMP/xpdev-install" \
+            ${{ matrix.expected_audio_backends }}
 
       - name: Verify installed CMake package
         if: runner.os == 'Windows'
@@ -312,32 +292,9 @@ jobs:
           $env:PATH = "$(Join-Path $prefix 'bin');$env:PATH"
           ctest --test-dir consumer-build -C Release --output-on-failure
 
-          $pcdir = Join-Path $prefix 'lib\pkgconfig'
-          @(
-            'xpdev.pc',
-            'xpdev-static.pc',
-            'xpdev-comio.pc',
-            'xpdev-comio-static.pc',
-            'xpdev-encode.pc',
-            'xpdev-encode-static.pc',
-            'xpdev-hash.pc',
-            'xpdev-hash-static.pc'
-          ) | ForEach-Object {
-            if (-not (Test-Path (Join-Path $pcdir $_))) {
-              throw "pkg-config module was not installed: $_"
-            }
-          }
-          $dynamicPc = Get-Content -Raw (Join-Path $pcdir 'xpdev.pc')
-          if ($dynamicPc -notmatch '-lxpdev-1' -or
-              $dynamicPc -notmatch '-DWRAPPER_IMPORTS') {
-            throw 'xpdev.pc does not describe the DLL import interface'
-          }
-          $staticPc = Get-Content -Raw (Join-Path $pcdir 'xpdev-static.pc')
-          if ($staticPc -notmatch '-lxpdev_static' -or
-              $staticPc -match 'WRAPPER_IMPORTS' -or
-              $staticPc -notmatch '-liphlpapi') {
-            throw 'xpdev-static.pc does not describe the static interface'
-          }
+          ./.github/scripts/test-msvc-direct-consumers.ps1 `
+            -Prefix $prefix `
+            -RuntimeLibrary '${{ matrix.msvc_runtime }}'
 
   mingw-w64:
     name: MinGW-w64 UCRT64 system pthreads
@@ -451,18 +408,9 @@ jobs:
           pkg-config --libs xpdev-static | grep -q -- -lxpdev_static
           pkg-config --libs xpdev-static \
             | grep -Eq -- '(^| )(-pthread|-l(win)?pthread)( |$)'
-          test "$(pkg-config --variable=audio_backends xpdev-static)" = \
-            WASAPI,PORTAUDIO
-          gcc tests/pkg-config-consumer.c \
-            $(pkg-config --cflags --libs \
-              xpdev-comio xpdev-encode xpdev-hash) \
-            -o pkg-config-consumer-shared.exe
-          PATH="$prefix/bin:$PATH" ./pkg-config-consumer-shared.exe
-          gcc tests/pkg-config-consumer.c \
-            $(pkg-config --cflags --libs \
-              xpdev-comio-static xpdev-encode-static xpdev-hash-static) \
-            -o pkg-config-consumer-static.exe
-          ./pkg-config-consumer-static.exe
+          CC=gcc CXX=g++ \
+            ./.github/scripts/test-pkg-config-consumers.sh \
+            "$prefix" WASAPI,PORTAUDIO
 
   mingw-w64-win32-threads:
     name: MinGW-w64 Win32-thread wrappers
@@ -593,3 +541,58 @@ jobs:
           ! grep -Ei '(^|[^[:alpha:]])(win)?pthread' \
             "$prefix/lib/pkgconfig/xpdev.pc" \
             "$prefix/lib/pkgconfig/xpdev-static.pc"
+          common_cflags=(
+            -I"$prefix/include"
+            -DXPDEV_USE_CONFIG_H
+            -D_WIN32
+            -D_WIN32_WINNT=0x0501
+            -DWINVER=0x0501
+            -DMSVCRT_VERSION=0x0501
+            -D_WIN32_IE=0x0500
+          )
+          shared_cflags=(
+            "${common_cflags[@]}"
+            -DWRAPPER_IMPORTS
+            -DCOMIO_IMPORTS
+            -DB64_IMPORTS
+            -DXPDEV_ENCODE_IMPORTS
+            -DMD5_IMPORTS
+            -DXPDEV_HASH_IMPORTS
+          )
+          shared_libs=(
+            -L"$prefix/lib"
+            -lxpdev-comio-1
+            -lxpdev-encode-1
+            -lxpdev-hash-1
+            -lxpdev-1
+          )
+          static_cflags=(
+            "${common_cflags[@]}"
+            -DXPDEV_ENCODE_STATIC
+            -DXPDEV_HASH_STATIC
+          )
+          static_libs=(
+            -L"$prefix/lib"
+            -lxpdev-comio_static
+            -lxpdev-encode_static
+            -lxpdev-hash_static
+            -lxpdev_static
+            -liphlpapi
+            -lws2_32
+            -lwinmm
+            -lnetapi32
+            -lole32
+            -luuid
+          )
+          gcc "${shared_cflags[@]}" tests/pkg-config-consumer.c \
+            "${shared_libs[@]}" -o direct-shared-c.exe
+          PATH="$prefix/bin:$PATH" ./direct-shared-c.exe
+          g++ "${shared_cflags[@]}" tests/pkg-config-consumer.cpp \
+            "${shared_libs[@]}" -o direct-shared-cxx.exe
+          PATH="$prefix/bin:$PATH" ./direct-shared-cxx.exe
+          gcc "${static_cflags[@]}" tests/pkg-config-consumer.c \
+            "${static_libs[@]}" -o direct-static-c.exe
+          ./direct-static-c.exe
+          g++ "${static_cflags[@]}" tests/pkg-config-consumer.cpp \
+            "${static_libs[@]}" -o direct-static-cxx.exe
+          ./direct-static-cxx.exe

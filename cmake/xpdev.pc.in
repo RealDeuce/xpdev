@@ -10,6 +10,6 @@ Description: Synchronet cross-platform development library
 URL: https://github.com/RealDeuce/xpdev
 Version: @PROJECT_VERSION@
 Requires: @XPDEV_PC_REQUIRES@
-Libs: -L${libdir} -l@XPDEV_PC_LIBRARY@@XPDEV_PC_LINK_LIBS@
+Libs: -L${libdir} @XPDEV_PC_LIBRARY_LINK@@XPDEV_PC_LINK_LIBS@
 Libs.private:@XPDEV_PC_FILE_PRIVATE_LIBS@
 Cflags: -I${includedir} @XPDEV_PC_CFLAGS@@XPDEV_PC_VARIANT_CFLAGS@
