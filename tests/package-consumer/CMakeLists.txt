@@ -72,6 +72,19 @@ if(xpdev_USE_XP_SEMAPHORES)
 	if(NOT EXISTS "${xpdev_installed_xpsem_header}")
 		message(FATAL_ERROR "The XP semaphore fallback header was not installed")
 	endif()
+	set(xpdev_opaque_sem_source
+		"${CMAKE_CURRENT_BINARY_DIR}/opaque_xp_sem.c")
+	file(WRITE "${xpdev_opaque_sem_source}"
+		"#include <xpdev/xpsem.h>\nint value = sizeof(struct xp_sem);\n")
+	try_compile(xpdev_exposed_xp_sem
+		"${CMAKE_CURRENT_BINARY_DIR}/opaque_xp_sem_build"
+		"${xpdev_opaque_sem_source}"
+		CMAKE_FLAGS "-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY"
+		LINK_LIBRARIES xpdev::shared)
+	if(xpdev_exposed_xp_sem)
+		message(FATAL_ERROR
+			"xpsem.h exposes the implementation of struct xp_sem")
+	endif()
 elseif(EXISTS "${xpdev_installed_xpsem_header}")
 	message(FATAL_ERROR
 		"xpsem.h was installed even though the XP semaphore fallback is disabled")
