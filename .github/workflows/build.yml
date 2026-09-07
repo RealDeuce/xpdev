@@ -197,7 +197,7 @@ jobs:
           ctest --test-dir consumer-build -C Release --output-on-failure
 
   mingw-w64:
-    name: MinGW-w64 UCRT64
+    name: MinGW-w64 UCRT64 system pthreads
     runs-on: windows-latest
     timeout-minutes: 20
 
@@ -226,6 +226,7 @@ jobs:
           cmake -S . -B build -G Ninja
           -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_C_COMPILER=gcc
+          -DXPDEV_USE_SYSTEM_PTHREADS=ON
           -DWITHOUT_ALSA=ON
           -DWITHOUT_COREAUDIO=ON
           -DWITHOUT_OSS=ON
@@ -245,6 +246,9 @@ jobs:
 
           core_dll="$(find build -type f -name 'libxpdev-1.dll' -print -quit)"
           test -n "$core_dll"
+          grep -q '^#define XPDEV_USE_SYSTEM_PTHREADS 1$' \
+            build/xpdev_config.h
+          objdump -p "$core_dll" | grep -qi 'DLL Name:.*winpthread'
           export_names "$core_dll" | LC_ALL=C sort >build/mingw-core-exports.txt
           grep -qx xp_pthread_mutex_init build/mingw-core-exports.txt
           if grep -E \
@@ -280,7 +284,7 @@ jobs:
             ctest --test-dir consumer-build --output-on-failure
 
   mingw-w64-win32-threads:
-    name: MinGW-w64 Win32 threads
+    name: MinGW-w64 Win32-thread wrappers
     runs-on: ubuntu-latest
     timeout-minutes: 20
 

@@ -27,8 +27,12 @@ include(CheckSymbolExists)
 include(CheckIncludeFiles)
 find_package(Threads REQUIRED)
 if(WIN32)
-	set(XPDEV_USE_SYSTEM_PTHREADS ${CMAKE_USE_PTHREADS_INIT} CACHE BOOL
-		"Use a detected POSIX pthread implementation instead of XPDev's Win32 wrappers")
+	set(XPDEV_USE_SYSTEM_PTHREADS OFF CACHE BOOL
+		"Use a detected POSIX pthread implementation instead of the preferred XPDev Win32 wrappers")
+	if(XPDEV_USE_SYSTEM_PTHREADS AND NOT CMAKE_USE_PTHREADS_INIT)
+		message(FATAL_ERROR
+			"XPDEV_USE_SYSTEM_PTHREADS requires a POSIX pthread implementation")
+	endif()
 else()
 	set(XPDEV_USE_SYSTEM_PTHREADS TRUE)
 endif()
