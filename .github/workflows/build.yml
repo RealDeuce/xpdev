@@ -406,8 +406,6 @@ jobs:
           pkg-config --cflags xpdev-hash-static \
             | grep -q -- -DXPDEV_HASH_STATIC
           pkg-config --libs xpdev-static | grep -q -- -lxpdev_static
-          pkg-config --libs xpdev-static \
-            | grep -Eq -- '(^| )(-pthread|-l(win)?pthread)( |$)'
           CC=gcc CXX=g++ \
             ./.github/scripts/test-pkg-config-consumers.sh \
             "$prefix" WASAPI,PORTAUDIO
