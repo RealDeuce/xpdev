@@ -236,26 +236,14 @@ extern "C" {
 	#endif
 #endif
 
-/*********************/
-/* String Functionss */
-/*********************/
-
-#ifndef USE_SNPRINTF
-	#define snprintf		safe_snprintf
-#endif
+/********************/
+/* String Functions */
+/********************/
 
 #if defined(_MSC_VER) || defined(__MINGW32__) || defined(__DMC__) || defined(__BORLANDC__)
-#if !defined(snprintf)
-	#define snprintf		_snprintf
-#endif
-	#define vsnprintf		_vsnprintf
 	#ifndef NEEDS_STRLCPY
 		#define NEEDS_STRLCPY
 	#endif
-#endif
-
-#if defined(__WATCOMC__)
-	#define vsnprintf(s,l,f,a)	vsprintf(s,f,a)
 #endif
 
 #if !defined(_MSC_VER) && !defined(__BORLANDC__) && !defined(__WATCOMC__)
@@ -385,6 +373,7 @@ DLLEXPORT uint64_t xp_timer64(void);
 DLLEXPORT int64_t xp_fast_timer64(void);
 DLLEXPORT int64_t xp_fast_timer64_ms(void);
 DLLEXPORT char*		lastchar(const char* str);
+/* Always terminates a non-empty destination and clamps truncating returns. */
 DLLEXPORT int		safe_snprintf(char *dst, size_t size, const char *fmt, ...)
 #if defined(__GNUC__)   // Catch printf-format errors
     __attribute__ ((format (printf, 3 , 4)))            // 1 is 'this'

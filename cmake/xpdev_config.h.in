@@ -19,7 +19,6 @@
 #cmakedefine01 XPDEV_NEEDS_GETDELIM
 #cmakedefine01 XPDEV_NEEDS_STRCASESTR
 #cmakedefine01 XPDEV_NEEDS_STRTOK_R
-#cmakedefine01 XPDEV_USE_SNPRINTF
 #cmakedefine01 XPDEV_STATIC_SDL
 #cmakedefine01 XPDEV_WITHOUT_CRYPTLIB
 
@@ -72,9 +71,6 @@
 #endif
 #if XPDEV_NEEDS_STRTOK_R && !defined(NEEDS_STRTOK_R)
 #define NEEDS_STRTOK_R 1
-#endif
-#if XPDEV_USE_SNPRINTF && !defined(USE_SNPRINTF)
-#define USE_SNPRINTF 1
 #endif
 #if XPDEV_STATIC_SDL && !defined(STATIC_SDL)
 #define STATIC_SDL 1

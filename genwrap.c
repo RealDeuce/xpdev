@@ -49,7 +49,7 @@
 #include "xpendian.h"   /* BYTE_SWAP */
 
 /****************************************************************************/
-/* Used to replace snprintf()  guarantees to terminate.			  			*/
+/* Explicit compatibility helper: guarantees termination and clamps length. */
 /****************************************************************************/
 int safe_snprintf(char *dst, size_t size, const char *fmt, ...)
 {

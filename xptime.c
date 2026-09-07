@@ -6,7 +6,6 @@
 #include <dos.h>
 #endif
 #include <ctype.h>
-#define USE_SNPRINTF    /* we don't need safe_snprintf for this project */
 #include "genwrap.h"
 #include "datewrap.h"
 #include "xpdatetime.h"
