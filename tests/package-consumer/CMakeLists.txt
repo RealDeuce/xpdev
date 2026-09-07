@@ -171,6 +171,13 @@ add_executable(xpdev_cpp_atomic_consumer consumer_cpp.cpp)
 target_link_libraries(xpdev_cpp_atomic_consumer PRIVATE xpdev::shared)
 add_test(NAME xpdev_cpp_atomic_consumer COMMAND xpdev_cpp_atomic_consumer)
 
+if(WIN32)
+	add_executable(xpdev_windows_wrapper_consumer consumer_windows.c)
+	target_link_libraries(xpdev_windows_wrapper_consumer PRIVATE xpdev::static)
+	add_test(NAME xpdev_windows_wrapper_consumer
+		COMMAND xpdev_windows_wrapper_consumer)
+endif()
+
 foreach(linkage IN ITEMS shared static)
 	add_executable(xpdev_${linkage}_consumer consumer.c)
 	target_compile_definitions(xpdev_${linkage}_consumer PRIVATE
