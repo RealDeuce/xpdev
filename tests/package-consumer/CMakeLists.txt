@@ -167,6 +167,10 @@ endforeach()
 
 enable_testing()
 
+add_executable(xpdev_cpp_atomic_consumer consumer_cpp.cpp)
+target_link_libraries(xpdev_cpp_atomic_consumer PRIVATE xpdev::shared)
+add_test(NAME xpdev_cpp_atomic_consumer COMMAND xpdev_cpp_atomic_consumer)
+
 foreach(linkage IN ITEMS shared static)
 	add_executable(xpdev_${linkage}_consumer consumer.c)
 	target_compile_definitions(xpdev_${linkage}_consumer PRIVATE
