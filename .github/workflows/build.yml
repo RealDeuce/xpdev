@@ -51,13 +51,17 @@ jobs:
             ctest --test-dir consumer-build --output-on-failure
 
   native-library-metadata:
-    name: Native library metadata (${{ matrix.os }})
+    name: Native library metadata (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest]
+        include:
+          - name: AppleClang
+            os: macos-latest
+          - name: MSVC
+            os: windows-latest
 
     steps:
       - name: Check out source
@@ -165,3 +169,84 @@ jobs:
           cmake --build consumer-build --config Release
           $env:PATH = "$(Join-Path $prefix 'bin');$env:PATH"
           ctest --test-dir consumer-build -C Release --output-on-failure
+
+  mingw-w64:
+    name: MinGW-w64 UCRT64
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install MinGW-w64 UCRT64 toolchain
+        uses: msys2/setup-msys2@66cd2cce69caa17b53920067426061ca1de3a884 # v2.32.0
+        with:
+          msystem: UCRT64
+          update: true
+          pacboy: >-
+            toolchain:p
+            cmake:p
+            ninja:p
+
+      - name: Configure
+        run: >-
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_C_COMPILER=gcc
+          -DWITHOUT_ALSA=ON
+          -DWITHOUT_COREAUDIO=ON
+          -DWITHOUT_OSS=ON
+          -DWITHOUT_PIPEWIRE=ON
+          -DWITHOUT_PORTAUDIO=ON
+          -DWITHOUT_PULSEAUDIO=ON
+          -DWITHOUT_SDL_AUDIO=ON
+
+      - name: Build libraries
+        run: cmake --build build
+
+      - name: Verify PE filenames and exports
+        run: |
+          export_names() {
+            objdump -p "$1" | sed -n -E \
+              '/^\[Ordinal\/Name Pointer\] Table/,/^\r?$/ s/^[[:space:]]*\[[[:space:]]*[0-9]+\].*[[:space:]]([^[:space:]\r]+)\r?$/\1/p'
+          }
+
+          core_dll="$(find build -type f -name 'libxpdev-1.dll' -print -quit)"
+          test -n "$core_dll"
+          export_names "$core_dll" | LC_ALL=C sort >build/mingw-core-exports.txt
+          grep -qx xp_pthread_mutex_init build/mingw-core-exports.txt
+          if grep -E \
+              '^(alsa_api|getch|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_mutex_init_np|pthread_mutex_initializer_np|pu_api|sdl_fillbuf|sem_trywait_block|unix_beep|xp_mixer_pull|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$' \
+              build/mingw-core-exports.txt; then
+            echo 'MinGW DLL exported an internal or legacy implementation symbol' >&2
+            exit 1
+          fi
+
+          for component in comio hash encode; do
+            dll="$(find build -type f -name "libxpdev-${component}-1.dll" -print -quit)"
+            test -n "$dll"
+            awk 'NR > 1 { print $1 }' "cmake/xpdev-${component}.def" \
+              | LC_ALL=C sort >"build/mingw-${component}-expected.txt"
+            export_names "$dll" | LC_ALL=C sort \
+              >"build/mingw-${component}-actual.txt"
+            diff -u "build/mingw-${component}-expected.txt" \
+              "build/mingw-${component}-actual.txt"
+          done
+
+      - name: Verify installed CMake package
+        run: |
+          prefix="$(cygpath -u "$RUNNER_TEMP")/xpdev-install"
+          cmake --install build --prefix "$prefix"
+          cmake -S tests/package-consumer -B consumer-build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=gcc \
+            -DCMAKE_CXX_COMPILER=g++ \
+            -DCMAKE_PREFIX_PATH="$prefix"
+          cmake --build consumer-build
+          PATH="$prefix/bin:$PATH" \
+            ctest --test-dir consumer-build --output-on-failure
