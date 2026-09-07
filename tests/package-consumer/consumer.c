@@ -124,13 +124,16 @@ int main(void)
 	errno = 0;
 	if (xp_sem_wait(&null_sem) != -1 || errno != EINVAL)
 		return 16;
-	if (xp_sem_init(&sem, 0, UINT_MAX) != 0)
+	if (xp_sem_init(&sem, 0, INT_MAX) != 0)
 		return 17;
 	errno = 0;
 	if (xp_sem_post(&sem) != -1 || errno != EOVERFLOW)
 		return 18;
 	if (xp_sem_destroy(&sem) != 0)
 		return 19;
+	errno = 0;
+	if (xp_sem_init(&sem, 0, UINT_MAX) != -1 || errno != EINVAL)
+		return 20;
 #endif
 	return 0;
 }

@@ -1,6 +1,9 @@
+#include <errno.h>
+#include <limits.h>
 #include <windows.h>
 
 #include <xpdev/rwlockwrap.h>
+#include <xpdev/semwrap.h>
 
 struct invalid_unlock_context {
 	rwlock_t *lock;
@@ -24,6 +27,9 @@ main(void)
 	DWORD after;
 	HANDLE thread;
 	rwlock_t lock;
+	sem_t sem;
+	sem_t null_sem = NULL;
+	int sem_value;
 
 	if (!GetProcessHandleCount(GetCurrentProcess(), &before))
 		return 1;
@@ -55,5 +61,27 @@ main(void)
 		return 11;
 	if (!rwlock_destroy(&lock))
 		return 12;
+
+	errno = 0;
+	if (sem_init(&sem, 0, UINT_MAX) != -1 || errno != EINVAL)
+		return 13;
+	errno = 0;
+	if (sem_init(&sem, 1, 0) != -1 || errno != ENOSYS)
+		return 14;
+	if (sem_init(&sem, 0, INT_MAX) != 0)
+		return 15;
+	errno = 0;
+	if (sem_post(&sem) != -1 || errno != EOVERFLOW)
+		return 16;
+	errno = 0;
+	if (sem_getvalue(&sem, &sem_value) != -1 || errno != ENOSYS)
+		return 17;
+	if (sem_trywait(&sem) != 0)
+		return 18;
+	if (sem_destroy(&sem) != 0 || sem != NULL)
+		return 19;
+	errno = 0;
+	if (sem_wait(&null_sem) != -1 || errno != EINVAL)
+		return 20;
 	return 0;
 }
