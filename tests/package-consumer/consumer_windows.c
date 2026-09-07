@@ -29,7 +29,6 @@ main(void)
 	rwlock_t lock;
 	sem_t sem;
 	sem_t null_sem = NULL;
-	int sem_value;
 
 	if (!GetProcessHandleCount(GetCurrentProcess(), &before))
 		return 1;
@@ -73,15 +72,12 @@ main(void)
 	errno = 0;
 	if (sem_post(&sem) != -1 || errno != EOVERFLOW)
 		return 16;
-	errno = 0;
-	if (sem_getvalue(&sem, &sem_value) != -1 || errno != ENOSYS)
-		return 17;
 	if (sem_trywait(&sem) != 0)
-		return 18;
+		return 17;
 	if (sem_destroy(&sem) != 0 || sem != NULL)
-		return 19;
+		return 18;
 	errno = 0;
 	if (sem_wait(&null_sem) != -1 || errno != EINVAL)
-		return 20;
+		return 19;
 	return 0;
 }

@@ -83,7 +83,6 @@ int main(void)
 #if XPDEV_USE_XP_SEMAPHORES
 	xp_sem_t sem;
 	xp_sem_t null_sem = NULL;
-	int sem_value;
 #endif
 
 	if (comVersion(version, sizeof(version)) != version || version[0] == '\0')
@@ -110,30 +109,26 @@ int main(void)
 		return 9;
 	if (xp_sem_post(&sem) != 0)
 		return 10;
-	if (xp_sem_getvalue(&sem, &sem_value) != 0 || sem_value != 1)
-		return 11;
 	if (xp_sem_wait(&sem) != 0)
-		return 12;
+		return 11;
 	errno = 0;
-	if (xp_sem_setvalue(&sem, -1) != -1 || errno != EINVAL)
-		return 13;
-	if (xp_sem_getvalue(&sem, &sem_value) != 0 || sem_value != 0)
-		return 14;
+	if (xp_sem_trywait(&sem) != -1 || errno != EAGAIN)
+		return 12;
 	if (xp_sem_destroy(&sem) != 0)
-		return 15;
+		return 13;
 	errno = 0;
 	if (xp_sem_wait(&null_sem) != -1 || errno != EINVAL)
-		return 16;
+		return 14;
 	if (xp_sem_init(&sem, 0, INT_MAX) != 0)
-		return 17;
+		return 15;
 	errno = 0;
 	if (xp_sem_post(&sem) != -1 || errno != EOVERFLOW)
-		return 18;
+		return 16;
 	if (xp_sem_destroy(&sem) != 0)
-		return 19;
+		return 17;
 	errno = 0;
 	if (xp_sem_init(&sem, 0, UINT_MAX) != -1 || errno != EINVAL)
-		return 20;
+		return 18;
 #endif
 	return 0;
 }

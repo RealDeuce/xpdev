@@ -131,17 +131,6 @@ int sem_post(sem_t* psem)
 	return win32_error(GetLastError());
 }
 
-int sem_getvalue(sem_t* psem, int* vp)
-{
-	if (psem == NULL || *psem == NULL || vp == NULL) {
-		errno = EINVAL;
-		return -1;
-	}
-	/* Win32 has no documented, race-free query for a semaphore's count. */
-	errno = ENOSYS;
-	return -1;
-}
-
 int sem_destroy(sem_t* psem)
 {
 	if (psem == NULL || *psem == NULL) {

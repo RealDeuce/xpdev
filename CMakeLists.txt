@@ -451,7 +451,6 @@ int main(void)
 	sem_t sem;
 	sem_t *named;
 	struct timespec timeout = {0, 0};
-	int value;
 	(void)sem_init(&sem, 0, 0);
 	(void)sem_destroy(&sem);
 	named = sem_open("/xpdev-cmake-probe", O_CREAT, 0600, 0);
@@ -460,7 +459,6 @@ int main(void)
 	(void)sem_wait(&sem);
 	(void)sem_trywait(&sem);
 	(void)sem_post(&sem);
-	(void)sem_getvalue(&sem, &value);
 	(void)sem_timedwait(&sem, &timeout);
 	return 0;
 }

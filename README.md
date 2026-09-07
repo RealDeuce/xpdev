@@ -45,6 +45,15 @@ the selection through `XPDEV_USE_NATIVE_POSIX_SEMAPHORES`,
 `XPDEV_USE_XP_SEMAPHORES`, `xpdev_USE_NATIVE_POSIX_SEMAPHORES`, and
 `xpdev_USE_XP_SEMAPHORES`.
 
+XPDev deliberately does not wrap `sem_getvalue()` and does not provide the
+former `xp_sem_getvalue()` or `xp_sem_setvalue()` fallback extensions. A
+semaphore count is transient as soon as it is observed, while replacing the
+count bypasses the wait/post protocol entirely. A platform's native
+`sem_getvalue()` may still be declared by its POSIX headers, but it is not part
+of XPDev's portable contract. The non-POSIX `sem_reset()` compatibility macro
+drains currently available posts with `sem_trywait()` rather than rewriting
+the implementation's count.
+
 Use `cmake --install build --prefix <path>` to override the platform's default
 installation prefix.
 

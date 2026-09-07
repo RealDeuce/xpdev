@@ -18,6 +18,14 @@ jobs:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Verify removed semaphore APIs stay absent
+        run: |
+          if grep -E '(sem_getvalue|xp_sem_getvalue|xp_sem_setvalue)' \
+              semwrap.c semwrap.h xpsem.c xpsem.h cmake/xpdev.map; then
+            echo 'Removed semaphore query or count-mutation API was restored' >&2
+            exit 1
+          fi
+
       - name: Install audio development packages
         run: |
           sudo apt-get update
@@ -134,7 +142,7 @@ jobs:
           otool -L "$dylib" \
             | grep -q 'compatibility version 1\.0\.0, current version 1\.0\.0'
           ! nm -gjU "$dylib" \
-            | grep -E '^_(getch|globi|kbhit|msclock|pthread_.*|sem_trywait_block|unix_beep|alsa_api|init_sdl_audio|pa_api|pu_api|sdl_fillbuf|xp_mixer_pull|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$'
+            | grep -E '^_(getch|globi|kbhit|msclock|pthread_.*|sem_getvalue|sem_trywait_block|unix_beep|alsa_api|init_sdl_audio|pa_api|pu_api|sdl_fillbuf|xp_mixer_pull|xp_sem_getvalue|xp_sem_setvalue|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$'
           for component in comio hash encode; do
             dylib="$(find build -name "libxpdev-${component}.1.dylib" -print -quit)"
             test -n "$dylib"
@@ -165,7 +173,7 @@ jobs:
           if ($exportText -notmatch '\sxp_pthread_mutex_init\s') {
             throw 'expected XPDev exports were not found'
           }
-          if ($exportText -match '\s(alsa_api|getch|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_mutex_init_np|pthread_mutex_initializer_np|pu_api|sdl_fillbuf|sem_trywait_block|unix_beep|xp_mixer_pull|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)\s') {
+          if ($exportText -match '\s(alsa_api|getch|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_mutex_init_np|pthread_mutex_initializer_np|pu_api|sdl_fillbuf|sem_getvalue|sem_trywait_block|unix_beep|xp_mixer_pull|xp_sem_getvalue|xp_sem_setvalue|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)\s') {
             throw "internal or legacy implementation symbol was exported: $($Matches[1])"
           }
 
@@ -271,7 +279,7 @@ jobs:
           export_names "$core_dll" | LC_ALL=C sort >build/mingw-core-exports.txt
           grep -qx xp_pthread_mutex_init build/mingw-core-exports.txt
           if grep -E \
-              '^(alsa_api|getch|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_.*|pu_api|sdl_fillbuf|sem_trywait_block|unix_beep|xp_mixer_pull|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$' \
+              '^(alsa_api|getch|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_.*|pu_api|sdl_fillbuf|sem_getvalue|sem_trywait_block|unix_beep|xp_mixer_pull|xp_sem_getvalue|xp_sem_setvalue|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$' \
               build/mingw-core-exports.txt; then
             echo 'MinGW DLL exported an internal or legacy implementation symbol' >&2
             exit 1
@@ -365,7 +373,7 @@ jobs:
           grep -qx pthread_once build/mingw-win32-core-exports.txt
           grep -qx xp_pthread_mutex_init build/mingw-win32-core-exports.txt
           if grep -E \
-              '^(alsa_api|getch|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_.*_np|pu_api|sdl_fillbuf|sem_trywait_block|unix_beep|xp_mixer_pull|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$' \
+              '^(alsa_api|getch|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_.*_np|pu_api|sdl_fillbuf|sem_getvalue|sem_trywait_block|unix_beep|xp_mixer_pull|xp_sem_getvalue|xp_sem_setvalue|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$' \
               build/mingw-win32-core-exports.txt; then
             echo 'MinGW Win32-thread DLL exported an internal symbol' >&2
             exit 1

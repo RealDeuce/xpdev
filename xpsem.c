@@ -230,57 +230,6 @@ RETURN:
 }
 
 int
-xp_sem_getvalue(xp_sem_t *sem, int *sval)
-{
-	int retval;
-
-	_SEM_CHECK_VALIDITY(sem);
-	if (sval == NULL) {
-		errno = EINVAL;
-		retval = -1;
-		goto RETURN;
-	}
-
-	assert_pthread_mutex_lock(&(*sem)->lock);
-	*sval = (int)(*sem)->count;
-	assert_pthread_mutex_unlock(&(*sem)->lock);
-
-	retval = 0;
-RETURN:
-	return retval;
-}
-
-int
-xp_sem_setvalue(xp_sem_t *sem, int sval)
-{
-	int retval;
-
-	_SEM_CHECK_VALIDITY(sem);
-	if (sval < 0) {
-		errno = EINVAL;
-		retval = -1;
-		goto RETURN;
-	}
-
-	assert_pthread_mutex_lock(&(*sem)->lock);
-	(*sem)->count = (uint32_t)sval;
-	if (((*sem)->nwaiters > 0) && sval) {
-		/*
-		 * We must use pthread_cond_broadcast() rather than
-		 * pthread_cond_signal() in order to assure that the highest
-		 * priority thread is run by the scheduler, since
-		 * pthread_cond_signal() signals waiting threads in FIFO order.
-		 */
-		pthread_cond_broadcast(&(*sem)->gtzero);
-	}
-	assert_pthread_mutex_unlock(&(*sem)->lock);
-
-	retval = 0;
-RETURN:
-	return retval;
-}
-
-int
 xp_sem_timedwait(xp_sem_t *sem, const struct timespec *abs_timeout)
 {
 	int retval = 0;
