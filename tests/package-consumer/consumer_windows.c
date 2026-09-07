@@ -26,7 +26,7 @@ main(void)
 	DWORD before;
 	DWORD after;
 	HANDLE thread;
-	rwlock_t lock;
+	rwlock_t lock = NULL;
 	sem_t sem;
 	sem_t null_sem = NULL;
 
@@ -37,6 +37,8 @@ main(void)
 			return 2;
 		if (!rwlock_destroy(&lock))
 			return 3;
+		if (lock != NULL)
+			return 28;
 	}
 	if (!GetProcessHandleCount(GetCurrentProcess(), &after) || after != before)
 		return 4;
@@ -60,6 +62,8 @@ main(void)
 		return 11;
 	if (!rwlock_destroy(&lock))
 		return 12;
+	if (lock != NULL)
+		return 29;
 	if (!rwlock_init(&lock))
 		return 20;
 	if (!rwlock_tryrdlock(&lock))
@@ -76,6 +80,8 @@ main(void)
 		return 26;
 	if (!rwlock_destroy(&lock))
 		return 27;
+	if (lock != NULL)
+		return 30;
 
 	errno = 0;
 	if (sem_init(&sem, 0, UINT_MAX) != -1 || errno != EINVAL)

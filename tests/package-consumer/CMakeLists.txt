@@ -185,6 +185,20 @@ target_link_libraries(xpdev_cpp_atomic_consumer PRIVATE xpdev::shared)
 add_test(NAME xpdev_cpp_atomic_consumer COMMAND xpdev_cpp_atomic_consumer)
 
 if(WIN32)
+	set(xpdev_opaque_rwlock_source
+		"${CMAKE_CURRENT_BINARY_DIR}/opaque_rwlock.c")
+	file(WRITE "${xpdev_opaque_rwlock_source}"
+		"#include <xpdev/rwlockwrap.h>\nint value = sizeof(*((rwlock_t)0));\n")
+	try_compile(xpdev_exposed_rwlock
+		"${CMAKE_CURRENT_BINARY_DIR}/opaque_rwlock_build"
+		"${xpdev_opaque_rwlock_source}"
+		CMAKE_FLAGS "-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY"
+		LINK_LIBRARIES xpdev::shared)
+	if(xpdev_exposed_rwlock)
+		message(FATAL_ERROR
+			"rwlockwrap.h exposes the Windows rwlock implementation")
+	endif()
+
 	add_executable(xpdev_windows_wrapper_consumer consumer_windows.c)
 	target_link_libraries(xpdev_windows_wrapper_consumer PRIVATE xpdev::shared)
 	add_test(NAME xpdev_windows_wrapper_consumer

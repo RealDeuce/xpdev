@@ -60,23 +60,8 @@ rwlock_destroy(rwlock_t *lock)
 #include "threadwrap.h"
 #include "wrapdll.h"
 
-struct rwlock_reader_thread {
-	struct rwlock_reader_thread *next;
-	DWORD id;
-	unsigned count;
-};
-
-typedef struct {
-	CRITICAL_SECTION lk;       // Protects access to all elements
-	CRITICAL_SECTION wlk;      // Locked by an active writer
-	HANDLE zeror;              // Event set whenever there are zero readers
-	HANDLE zerow;              // Event set whenever writers_waiting + writers is zero
-	unsigned readers;
-	unsigned writers;
-	unsigned writers_waiting;
-	DWORD writer;
-	struct rwlock_reader_thread *rthreads;
-} rwlock_t;
+struct rwlock;
+typedef struct rwlock *rwlock_t;
 
 DLLEXPORT bool rwlock_init(rwlock_t *lock);
 DLLEXPORT bool rwlock_rdlock(rwlock_t *lock);
