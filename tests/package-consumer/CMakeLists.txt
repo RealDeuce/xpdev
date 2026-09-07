@@ -184,6 +184,14 @@ add_executable(xpdev_cpp_atomic_consumer consumer_cpp.cpp)
 target_link_libraries(xpdev_cpp_atomic_consumer PRIVATE xpdev::shared)
 add_test(NAME xpdev_cpp_atomic_consumer COMMAND xpdev_cpp_atomic_consumer)
 
+add_executable(xpdev_ownership_consumer consumer_ownership.c)
+target_link_libraries(xpdev_ownership_consumer PRIVATE xpdev::shared)
+add_test(NAME xpdev_ownership_consumer COMMAND xpdev_ownership_consumer)
+
+add_executable(xpdev_static_legacy_consumer consumer_static_legacy.c)
+target_link_libraries(xpdev_static_legacy_consumer PRIVATE xpdev::static)
+add_test(NAME xpdev_static_legacy_consumer COMMAND xpdev_static_legacy_consumer)
+
 if(WIN32)
 	set(xpdev_opaque_rwlock_source
 		"${CMAKE_CURRENT_BINARY_DIR}/opaque_rwlock.c")

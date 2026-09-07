@@ -1162,15 +1162,3 @@ char* safe_strerror(int errnum, char *buf, size_t buflen)
 #endif
 	return buf;
 }
-
-/****************************************************************************/
-/* Common realloc mistake: 'p' nulled but not freed upon failure			*/
-/* [memleakOnRealloc]														*/
-/****************************************************************************/
-void* realloc_or_free(void* p, size_t size)
-{
-	void* n = realloc(p, size);
-	if (n == NULL)
-		free(p);
-	return n;
-}

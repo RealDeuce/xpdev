@@ -36,6 +36,11 @@ extern "C" {
 typedef str_list_t	(*dataLineParser_t)(const char*);
 typedef char*		(*dataLineCreator_t)(const str_list_t);
 
+/* Creator callbacks return data-line-family memory because dataCreateList()
+ * consumes and releases each result. */
+DLLEXPORT char*		dataLineAlloc(size_t size);
+DLLEXPORT void		dataLineFree(char* line);
+
 /* columns arguments are optional (may be NULL) */
 DLLEXPORT str_list_t*	dataParseList(const str_list_t records, str_list_t* columns, dataLineParser_t);
 DLLEXPORT str_list_t*	dataReadFile(FILE* fp, str_list_t* columns, dataLineParser_t);

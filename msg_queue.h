@@ -60,6 +60,8 @@ DLLEXPORT int           msgQueueReadLevel(msg_queue_t*);
 DLLEXPORT void*         msgQueueRead(msg_queue_t*, int timeout);
 DLLEXPORT void*         msgQueuePeek(msg_queue_t*, int timeout);
 DLLEXPORT void*         msgQueueFind(msg_queue_t*, const void*, size_t length);
+/* Release a message returned by msgQueueRead() or msgQueueFind(). */
+DLLEXPORT void          msgQueueFreeMessage(void* message);
 DLLEXPORT list_node_t*  msgQueueFirstNode(msg_queue_t*);
 DLLEXPORT list_node_t*  msgQueueLastNode(msg_queue_t*);
 #define         msgQueueNextNode(node)          listNextNode(node)

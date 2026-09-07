@@ -25,6 +25,16 @@
 #include <stdlib.h>     /* malloc */
 #include "strwrap.h"        /* strdup */
 
+char* dataLineAlloc(size_t size)
+{
+	return (char*)malloc(size);
+}
+
+void dataLineFree(char* line)
+{
+	free(line);
+}
+
 /***********************************/
 /* CSV (Comma Separated Value) API */
 /***********************************/
@@ -194,14 +204,14 @@ str_list_t dataCreateList(const str_list_t records[], const str_list_t columns, 
 	if (columns != NULL) {
 		p = lineCreator(columns);
 		strListAppend(&list, p, li++);
-		free(p);
+		dataLineFree(p);
 	}
 
 	if (records != NULL)
 		for (i = 0; records[i] != NULL; i++) {
 			p = lineCreator(records[i]);
 			strListAppend(&list, p, li++);
-			free(p);
+			dataLineFree(p);
 		}
 
 	return list;

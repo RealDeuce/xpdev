@@ -26,6 +26,13 @@ jobs:
             exit 1
           fi
 
+      - name: Verify caller-local allocation helpers stay out of the ABI
+        run: |
+          if grep -E '^\s*(realloc_or_free|stbuf_frommem);' cmake/xpdev.map; then
+            echo 'Caller-local allocation helper was restored to the shared ABI' >&2
+            exit 1
+          fi
+
       - name: Install audio development packages
         run: |
           sudo apt-get update
@@ -111,6 +118,19 @@ jobs:
               -DWITHOUT_PULSEAUDIO=ON
               -DWITHOUT_SDL_AUDIO=ON
             expected_audio_backends: WASAPI
+            msvc_runtime: -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL
+          - name: MSVC-static-CRT
+            os: windows-latest
+            audio_options: >-
+              -DWITHOUT_ALSA=ON
+              -DWITHOUT_COREAUDIO=ON
+              -DWITHOUT_OSS=ON
+              -DWITHOUT_PIPEWIRE=ON
+              -DWITHOUT_PORTAUDIO=ON
+              -DWITHOUT_PULSEAUDIO=ON
+              -DWITHOUT_SDL_AUDIO=ON
+            expected_audio_backends: WASAPI
+            msvc_runtime: -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
 
     steps:
       - name: Check out source
@@ -127,6 +147,7 @@ jobs:
         run: >-
           cmake -S . -B build
           -DCMAKE_BUILD_TYPE=Release
+          ${{ matrix.msvc_runtime }}
           ${{ matrix.audio_options }}
 
       - name: Build libraries
@@ -142,7 +163,7 @@ jobs:
           otool -L "$dylib" \
             | grep -q 'compatibility version 1\.0\.0, current version 1\.0\.0'
           ! nm -gjU "$dylib" \
-            | grep -E '^_(getch|globi|kbhit|msclock|pthread_.*|sem_getvalue|sem_trywait_block|unix_beep|alsa_api|init_sdl_audio|pa_api|pu_api|sdl_fillbuf|xp_mixer_pull|xp_sem_getvalue|xp_sem_setvalue|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$'
+            | grep -E '^_(asprintf|getch|getdelim|globi|kbhit|msclock|pthread_.*|realloc_or_free|sem_getvalue|sem_trywait_block|stbuf_frommem|strndup|unix_beep|vasprintf|alsa_api|init_sdl_audio|pa_api|pu_api|sdl_fillbuf|xp_mixer_pull|xp_sem_getvalue|xp_sem_setvalue|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$'
           for component in comio hash encode; do
             dylib="$(find build -name "libxpdev-${component}.1.dylib" -print -quit)"
             test -n "$dylib"
@@ -174,19 +195,35 @@ jobs:
             throw 'expected XPDev exports were not found'
           }
           @(
+            'dataLineAlloc',
+            'dataLineFree',
+            'iniFreeEnumList',
+            'iniFreeIntList',
+            'listAllocData',
+            'listFreeData',
+            'msgQueueFreeMessage',
+            'namedStrListFree',
+            'namedStrListReplace',
+            'namedStrListSetName',
+            'namedStrListSetValue',
             'rwlock_destroy',
             'rwlock_init',
             'rwlock_rdlock',
             'rwlock_tryrdlock',
             'rwlock_trywrlock',
             'rwlock_unlock',
-            'rwlock_wrlock'
+            'rwlock_wrlock',
+            'strListAllocString',
+            'strListFreeContainer',
+            'strListFreeString',
+            'xp_audio_buffer_alloc',
+            'xp_audio_buffer_free'
           ) | ForEach-Object {
             if ($exportText -notmatch "\s$([regex]::Escape($_))\s") {
               throw "expected XPDev export was not found: $_"
             }
           }
-          if ($exportText -match '\s(alsa_api|getch|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_mutex_init_np|pthread_mutex_initializer_np|pu_api|sdl_fillbuf|sem_getvalue|sem_trywait_block|unix_beep|xp_mixer_pull|xp_pthread_mutex_initializer|xp_sem_getvalue|xp_sem_setvalue|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)\s') {
+          if ($exportText -match '\s(alsa_api|asprintf|getch|getdelim|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_mutex_init_np|pthread_mutex_initializer_np|pu_api|realloc_or_free|sdl_fillbuf|sem_getvalue|sem_trywait_block|stbuf_frommem|strndup|unix_beep|vasprintf|xp_mixer_pull|xp_pthread_mutex_initializer|xp_sem_getvalue|xp_sem_setvalue|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)\s') {
             throw "internal or legacy implementation symbol was exported: $($Matches[1])"
           }
 
@@ -231,6 +268,7 @@ jobs:
           cmake --install build --config Release --prefix $prefix
           cmake -S tests/package-consumer -B consumer-build `
             "-DCMAKE_PREFIX_PATH=$prefix" `
+            "${{ matrix.msvc_runtime }}" `
             "-DXPDEV_CONSUMER_EXPECT_AUDIO_BACKENDS=${{ matrix.expected_audio_backends }}"
           cmake --build consumer-build --config Release
           $env:PATH = "$(Join-Path $prefix 'bin');$env:PATH"
@@ -290,12 +328,19 @@ jobs:
           objdump -p "$core_dll" | grep -qi 'DLL Name:.*winpthread'
           export_names "$core_dll" | LC_ALL=C sort >build/mingw-core-exports.txt
           grep -qx xp_pthread_mutex_init build/mingw-core-exports.txt
-          for symbol in rwlock_destroy rwlock_init rwlock_rdlock \
+          for symbol in dataLineAlloc dataLineFree iniFreeEnumList iniFreeIntList \
+              listAllocData listFreeData msgQueueFreeMessage namedStrListFree \
+              namedStrListReplace namedStrListSetName namedStrListSetValue \
+              rwlock_destroy rwlock_init rwlock_rdlock \
               rwlock_tryrdlock rwlock_trywrlock rwlock_unlock rwlock_wrlock; do
             grep -qx "$symbol" build/mingw-core-exports.txt
           done
+          for symbol in strListAllocString strListFreeContainer \
+              strListFreeString xp_audio_buffer_alloc xp_audio_buffer_free; do
+            grep -qx "$symbol" build/mingw-core-exports.txt
+          done
           if grep -E \
-              '^(alsa_api|getch|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_.*|pu_api|sdl_fillbuf|sem_getvalue|sem_trywait_block|unix_beep|xp_mixer_pull|xp_pthread_mutex_initializer|xp_sem_getvalue|xp_sem_setvalue|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$' \
+              '^(alsa_api|asprintf|getch|getdelim|globi|init_sdl_audio|kbhit|msclock|pa_api|pthread_.*|pu_api|realloc_or_free|sdl_fillbuf|sem_getvalue|sem_trywait_block|stbuf_frommem|strndup|unix_beep|vasprintf|xp_mixer_pull|xp_pthread_mutex_initializer|xp_sem_getvalue|xp_sem_setvalue|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$' \
               build/mingw-core-exports.txt; then
             echo 'MinGW DLL exported an internal or legacy implementation symbol' >&2
             exit 1

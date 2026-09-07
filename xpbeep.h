@@ -64,9 +64,15 @@ DLLEXPORT void xpbeep(double freq, DWORD duration);
 /* Legacy U8 mono 22050 Hz entrypoint. Converts internally to S16 stereo 44100.
  * `sample_size` is bytes of U8 mono data. */
 DLLEXPORT bool xp_play_sample(unsigned char *sample, size_t sample_size, bool background);
+/* Allocate/free buffers in the audio ownership family.  The allocation size
+ * is nframes * XPBEEP_FRAMESIZE bytes. */
+DLLEXPORT int16_t *xp_audio_buffer_alloc(size_t nframes);
+DLLEXPORT void xp_audio_buffer_free(int16_t *frames);
+
 /* Convert U8 mono 22050 Hz data into a newly-allocated S16 stereo 44100 Hz
  * frame buffer. 2:1 linear-interpolation upsample, L==R. Caller owns the
- * returned buffer and must free() it. Returns NULL on allocation failure. */
+ * returned buffer and must use xp_audio_buffer_free() unless ownership is
+ * transferred to xp_audio_append(). Returns NULL on allocation failure. */
 DLLEXPORT int16_t *xp_u8mono22k_to_s16stereo44k(const unsigned char *in, size_t in_bytes,
                                                 size_t *nframes_out);
 /* Native S16 stereo 44100 Hz entrypoint. `nframes` is frame count; the buffer
@@ -80,7 +86,7 @@ DLLEXPORT bool xptone(double freq, DWORD duration, DWORD shape);
  *
  * Multiple streams play concurrently; the mixer sums them into the device
  * output. A stream is a FIFO of producer-supplied PCM buffers — append
- * hands ownership of a malloc()d frame buffer to the mixer, which frees
+ * hands ownership of an audio-family frame buffer to the mixer, which frees
  * the buffer once its frames have been fully consumed. Append is
  * non-blocking in the steady state; it only waits when the per-node
  * metadata allocation itself cannot be satisfied.
@@ -142,8 +148,9 @@ DLLEXPORT xp_audio_handle_t xp_audio_open(float volume_l, float volume_r);
 DLLEXPORT void              xp_audio_close(xp_audio_handle_t h);
 
 /* Append `frames` (nframes S16 stereo frames) to the stream's FIFO.
- * Ownership of `frames` transfers to the channel: the caller must have
- * obtained it via malloc(), and the channel free()s it once the buffer
+ * Ownership of `frames` transfers to the channel: a DLL caller must have
+ * obtained it via xp_audio_buffer_alloc() or the converter above, and the
+ * channel releases it once the buffer
  * has been fully consumed.  Returns false if the stream is finished/
  * closed or the handle is invalid; `frames` is freed in that case so
  * the caller never owns it after a failed call.

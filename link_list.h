@@ -39,7 +39,7 @@ extern "C" {
 #define LAST_NODE               ((list_node_t*)-1)      /* Special value to specify last node in list */
 
 /* Valid link_list_t.flags and list_node_t.flags bits */
-#define LINK_LIST_MALLOC        (1 << 0)  /* Node data allocated with malloc() */
+#define LINK_LIST_MALLOC        (1 << 0)  /* Node data is owned by the list */
 #define LINK_LIST_ALWAYS_FREE   (1 << 1)  /* ALWAYS free node data in listFreeNodes() */
 #define LINK_LIST_NEVER_FREE    (1 << 2)  /* NEVER free node data (careful of memory leaks!) */
 #define LINK_LIST_MUTEX         (1 << 3)  /* Mutex-protected linked-list */
@@ -79,6 +79,8 @@ typedef struct link_list {
 } link_list_t;
 
 /* Initialization, Allocation, and Freeing of Lists and Nodes */
+DLLEXPORT void*         listAllocData(size_t size);
+DLLEXPORT void          listFreeData(void* data);
 DLLEXPORT link_list_t*  listInit(link_list_t* /* NULL to auto-allocate */, int flags);
 DLLEXPORT bool          listFree(link_list_t*);
 DLLEXPORT int           listFreeNodes(link_list_t*);
@@ -148,7 +150,9 @@ DLLEXPORT bool listNodeIsLocked(const list_node_t*);
 /* Add node to list, returns pointer to new node or NULL on error */
 DLLEXPORT list_node_t* listAddNode(link_list_t*, void* data, list_node_tag_t, list_node_t * after /* NULL=insert */);
 
-/* Add node to list with flags, returns pointer to new node or NULL on error */
+/* Add node to list with flags, returns pointer to new node or NULL on error.
+ * Data that XPDev may free must come from listAllocData() when used through a
+ * shared-library boundary, and on Windows for static links as well. */
 DLLEXPORT list_node_t* listAddNodeWithFlags(link_list_t*, void* data, list_node_tag_t, int flags, list_node_t * after /* NULL=insert */);
 
 /* Add array of node data to list, returns number of nodes added (or negative on error) */
@@ -187,7 +191,8 @@ DLLEXPORT bool listSwapNodes(list_node_t* node1, list_node_t* node2);
 #define listPopNode(list)                       listRemoveNode(list, LAST_NODE, FALSE)
 #define listShiftNode(list)                     listRemoveNode(list, FIRST_NODE, FALSE)
 
-/* Remove node from list, returning the node's data (if not free'd) */
+/* Remove node from list, returning the node's data (if not free'd).  Copied
+ * data created by this family must be released with listFreeData(). */
 DLLEXPORT void* listRemoveNode(link_list_t*, list_node_t* /* NULL=first */, bool free_data);
 DLLEXPORT void* listRemoveTaggedNode(link_list_t*, list_node_tag_t, bool free_data);
 

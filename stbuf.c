@@ -8,6 +8,18 @@
 
 static bool stbuf_realloc(stbuf *buf, size_t newsz);
 
+static void*
+stbuf_default_realloc(void* mem, size_t size)
+{
+	return realloc(mem, size);
+}
+
+static void
+stbuf_default_free(void* mem)
+{
+	free(mem);
+}
+
 stbuf
 stbuf_malloc(size_t bufsz)
 {
@@ -25,6 +37,8 @@ stbuf_malloc(size_t bufsz)
 		stb->sz = bufsz;
 		stb->len = 0;
 		stb->dynamic = true;
+		stb->realloc_fn = stbuf_default_realloc;
+		stb->free_fn = stbuf_default_free;
 		stb->buf[bufsz] = 0;
 	}
 	return ret;
@@ -47,26 +61,9 @@ stbuf_zalloc(size_t bufsz)
 
 		stb->sz = bufsz;
 		stb->dynamic = true;
+		stb->realloc_fn = stbuf_default_realloc;
+		stb->free_fn = stbuf_default_free;
 	}
-	return ret;
-}
-
-
-stbuf
-stbuf_frommem(void *mem, size_t sz, bool allocated)
-{
-	stbuf ret = (stbuf)mem;
-	struct stbuf_raw *stb = (struct stbuf_raw *)mem;
-
-	assert(mem);
-	if (mem == NULL)
-		return NULL;
-	if (sz < STBUF_OFFSET + 1)
-		return NULL;
-	stb->sz = sz - STBUF_OFFSET - 1;
-	stb->len = 0;
-	stb->buf[0] = 0;
-	stb->dynamic = allocated;
 	return ret;
 }
 
@@ -89,8 +86,9 @@ stbuf_free(stbuf buf)
 	if (!buf)
 		return;
 	assert(buf->dynamic);
-	if (buf->dynamic)
-		free(buf);
+	assert(buf->free_fn);
+	if (buf->dynamic && buf->free_fn)
+		buf->free_fn(buf);
 }
 
 /*
@@ -100,6 +98,7 @@ static bool
 stbuf_realloc(stbuf *buf, size_t newsz)
 {
 	struct stbuf_raw *nbuf;
+	stbuf_realloc_fn realloc_fn;
 
 	assert(buf);
 	if (!buf)
@@ -116,13 +115,22 @@ stbuf_realloc(stbuf *buf, size_t newsz)
 		assert((*buf)->dynamic);
 		if (!(*buf)->dynamic)
 			return false;
+		realloc_fn = (*buf)->realloc_fn;
 	}
+	else
+		realloc_fn = stbuf_default_realloc;
 
-	nbuf = realloc(*buf, newsz);
+	assert(realloc_fn);
+	if (realloc_fn == NULL)
+		return false;
+	nbuf = realloc_fn(*buf, newsz);
 	if (!nbuf)
 		return false;
-	if (*buf == NULL)
+	if (*buf == NULL) {
 		nbuf->dynamic = true;
+		nbuf->realloc_fn = stbuf_default_realloc;
+		nbuf->free_fn = stbuf_default_free;
+	}
 	nbuf->sz = newsz - STBUF_OFFSET - 1;
 
 	*buf = (stbuf)nbuf;

@@ -26,6 +26,8 @@
 
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "gen_defs.h"
 #include "wrapdll.h"
 
@@ -57,6 +59,7 @@
 #if defined(__cplusplus)
 extern "C" {
 #endif
+/* Release any result returned by the xp_asprintf family. */
 DLLEXPORT void xp_asprintf_free(char *format);
 DLLEXPORT char* xp_asprintf_start(const char *format);
 DLLEXPORT char* xp_asprintf_next(char *format, int type, ...);
@@ -66,10 +69,45 @@ DLLEXPORT char* xp_vasprintf(const char *format, va_list va);
 DLLEXPORT int xp_printf_get_next(char *format);
 DLLEXPORT int xp_printf_get_type(const char *format);
 #if defined(NEEDS_VASPRINTF)
-DLLEXPORT int vasprintf(char **strptr, const char *format, va_list va);
+static inline int xpdev_vasprintf_local(char **strptr, const char *format, va_list va)
+{
+	va_list copy;
+	int len;
+
+	if (strptr == NULL)
+		return -1;
+	*strptr = NULL;
+	va_copy(copy, va);
+	len = vsnprintf(NULL, 0, format, copy);
+	va_end(copy);
+	if (len < 0)
+		return -1;
+	*strptr = (char*)malloc((size_t)len + 1);
+	if (*strptr == NULL)
+		return -1;
+	va_copy(copy, va);
+	len = vsnprintf(*strptr, (size_t)len + 1, format, copy);
+	va_end(copy);
+	if (len < 0) {
+		free(*strptr);
+		*strptr = NULL;
+	}
+	return len;
+}
+#define vasprintf xpdev_vasprintf_local
 #endif
 #if defined(NEEDS_ASPRINTF)
-DLLEXPORT int asprintf(char **strptr, const char *format, ...);
+static inline int xpdev_asprintf_local(char **strptr, const char *format, ...)
+{
+	va_list va;
+	int ret;
+
+	va_start(va, format);
+	ret = vasprintf(strptr, format, va);
+	va_end(va);
+	return ret;
+}
+#define asprintf xpdev_asprintf_local
 #endif
 
 #if defined(__cplusplus)

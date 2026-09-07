@@ -33,6 +33,7 @@
 #endif
 #if defined(_WIN32)
 #define NEEDS_GETDELIM
+#define NEEDS_STRNDUP
 #define NEEDS_STRCASESTR
 #endif
 #if !defined(__unix__)

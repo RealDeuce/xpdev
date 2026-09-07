@@ -32,6 +32,8 @@ XPDEV_1.0 {
 		csvLineParser;
 		dataCloseFile;
 		dataCreateList;
+		dataLineAlloc;
+		dataLineFree;
 		dataListFree;
 		dataOpenFile;
 		dataParseList;
@@ -87,6 +89,8 @@ XPDEV_1.0 {
 		iniFastParsedSectionListFree;
 		iniFileName;
 		iniFreeFastParse;
+		iniFreeEnumList;
+		iniFreeIntList;
 		iniFreeNamedStringList;
 		iniFreeParsedSections;
 		iniFreeStringList;
@@ -231,6 +235,7 @@ XPDEV_1.0 {
 		listAddNodeWithFlags;
 		listAddNodes;
 		listAddStringList;
+		listAllocData;
 		listAttach;
 		listCountMatches;
 		listCountNodes;
@@ -239,6 +244,7 @@ XPDEV_1.0 {
 		listFindNode;
 		listFirstNode;
 		listFree;
+		listFreeData;
 		listFreeNodeData;
 		listFreeNodes;
 		listFreeStringList;
@@ -280,6 +286,7 @@ XPDEV_1.0 {
 		msgQueueFind;
 		msgQueueFirstNode;
 		msgQueueFree;
+		msgQueueFreeMessage;
 		msgQueueGetPrivateData;
 		msgQueueInit;
 		msgQueueLastNode;
@@ -293,7 +300,11 @@ XPDEV_1.0 {
 		msgQueueWriteLevel;
 		namedStrListDelete;
 		namedStrListFindName;
+		namedStrListFree;
 		namedStrListInsert;
+		namedStrListReplace;
+		namedStrListSetName;
+		namedStrListSetValue;
 		nonblocking_connect;
 		os_cmdshell;
 		os_cpuarch;
@@ -306,7 +317,6 @@ XPDEV_1.0 {
 		parse_duration;
 		paths_are_same;
 		rdlock;
-		realloc_or_free;
 		removecase;
 		retry_bind;
 		safe_snprintf;
@@ -331,7 +341,6 @@ XPDEV_1.0 {
 		sopen;
 		stbuf_atleast;
 		stbuf_free;
-		stbuf_frommem;
 		stbuf_lipo;
 		stbuf_malloc;
 		stbuf_memrepl;
@@ -339,6 +348,7 @@ XPDEV_1.0 {
 		stbuf_truncate;
 		stbuf_zalloc;
 		strListAnnex;
+		strListAllocString;
 		strListAppend;
 		strListAppendBlock;
 		strListAppendFormat;
@@ -361,6 +371,8 @@ XPDEV_1.0 {
 		strListFind;
 		strListFree;
 		strListFreeBlock;
+		strListFreeContainer;
+		strListFreeString;
 		strListFreeStrings;
 		strListIndexOf;
 		strListInit;
@@ -431,6 +443,8 @@ XPDEV_1.0 {
 		xp_asprintf_next;
 		xp_asprintf_start;
 		xp_audio_append;
+		xp_audio_buffer_alloc;
+		xp_audio_buffer_free;
 		xp_audio_clear;
 		xp_audio_close;
 		xp_audio_drain;

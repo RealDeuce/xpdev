@@ -23,6 +23,7 @@
 #define _GENWRAP_H
 
 #include <stdio.h>		/* sprintf */
+#include <stdlib.h>		/* free, realloc */
 #include <string.h>		/* strerror() */
 #include <time.h>		/* clock_t */
 #include "gen_defs.h"	/* ulong */
@@ -406,7 +407,16 @@ DLLEXPORT xp_msclock_t	xp_msclock(void);
 DLLEXPORT bool		check_pid(pid_t);
 DLLEXPORT bool		terminate_pid(pid_t);
 
-DLLEXPORT void*		realloc_or_free(void* p, size_t size);
+/* Keep allocation and release in the calling module.  This matters when a
+ * Windows DLL and its caller use separate static CRT instances. */
+static inline void* xpdev_realloc_or_free_local(void* p, size_t size)
+{
+	void* n = realloc(p, size);
+	if (n == NULL)
+		free(p);
+	return n;
+}
+#define realloc_or_free xpdev_realloc_or_free_local
 
 #if defined(__cplusplus)
 }

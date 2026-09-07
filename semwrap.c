@@ -52,6 +52,20 @@ xp_sem_trywait_block(sem_t *sem, uint32_t timeout)
 
 #include <limits.h>     /* INT_MAX */
 
+/* Older Windows CRTs, including Borland's, do not define every POSIX errno
+ * value used by the semaphore API.  Keep the precise value where it exists
+ * and otherwise use the closest errno understood by that CRT. */
+#if defined(EOVERFLOW)
+	#define XPDEV_SEM_EOVERFLOW EOVERFLOW
+#else
+	#define XPDEV_SEM_EOVERFLOW ERANGE
+#endif
+#if defined(ENOSYS)
+	#define XPDEV_SEM_ENOSYS ENOSYS
+#else
+	#define XPDEV_SEM_ENOSYS EINVAL
+#endif
+
 static int
 win32_error(DWORD error)
 {
@@ -68,7 +82,7 @@ win32_error(DWORD error)
 			errno = ENOMEM;
 			break;
 		case ERROR_TOO_MANY_POSTS:
-			errno = EOVERFLOW;
+			errno = XPDEV_SEM_EOVERFLOW;
 			break;
 		default:
 			errno = EIO;
@@ -87,7 +101,7 @@ int sem_init(sem_t* psem, int pshared, unsigned int value)
 		return -1;
 	}
 	if (pshared != 0) {
-		errno = ENOSYS;
+		errno = XPDEV_SEM_ENOSYS;
 		return -1;
 	}
 	if ((*(psem) = CreateSemaphore(NULL, value, INT_MAX, NULL)) == NULL)

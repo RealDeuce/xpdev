@@ -132,6 +132,10 @@ DLLEXPORT uint 			iniReadBitField(FILE*, const char* section, const char* key
 /* Free string list returned from iniRead*List functions */
 DLLEXPORT str_list_t 	iniFreeStringList(str_list_t list);
 
+/* Free numeric lists returned by parse/iniRead/iniGet list functions. */
+DLLEXPORT void			iniFreeEnumList(unsigned* list);
+DLLEXPORT void			iniFreeIntList(int* list);
+
 /* Free named string list returned from iniReadNamedStringList */
 DLLEXPORT named_string_t** iniFreeNamedStringList(named_string_t** list);
 

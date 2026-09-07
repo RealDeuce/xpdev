@@ -104,6 +104,20 @@
 #define S_BYTEDEPTH XPBEEP_BYTEDEPTH
 #define S_FRAMESIZE XPBEEP_FRAMESIZE
 
+int16_t *
+xp_audio_buffer_alloc(size_t nframes)
+{
+	if (nframes == 0 || nframes > SIZE_MAX / S_FRAMESIZE)
+		return NULL;
+	return (int16_t*)malloc(nframes * S_FRAMESIZE);
+}
+
+void
+xp_audio_buffer_free(int16_t *frames)
+{
+	free(frames);
+}
+
 #ifdef XPDEV_THREAD_SAFE
 /* MSVC defines __STDC_NO_ATOMICS__=1 even when /experimental:c11atomics is
  * enabled and <stdatomic.h> works. threadwrap.h skips the include when the
@@ -2235,7 +2249,7 @@ do_xp_play_sample(unsigned char *sampo, size_t sz, int *freed)
 #ifdef XPDEV_THREAD_SAFE
 
 /* One queued buffer inside a stream.  `frames` is owned by the mixer
- * (caller malloc()s, channel free()s when fully consumed).  `consumed`
+ * (audio-family allocation, released when fully consumed).  `consumed`
  * is the mixer's read cursor; it wraps at nframes for looping bufs.
  *
  * Fade metadata: the mixer applies envelopes at pull time rather than
@@ -2379,7 +2393,7 @@ stream_from_handle(xp_audio_handle_t h)
 static void
 free_buf(struct xp_audio_buf *b)
 {
-	free(b->frames);
+	xp_audio_buffer_free(b->frames);
 	free(b);
 }
 
@@ -2816,7 +2830,7 @@ xp_audio_append(xp_audio_handle_t h, int16_t *frames, size_t nframes,
 	struct xp_audio_buf    *node = NULL;
 
 	if (!s || !frames || nframes == 0) {
-		free(frames);
+		xp_audio_buffer_free(frames);
 		return false;
 	}
 
@@ -2830,7 +2844,7 @@ xp_audio_append(xp_audio_handle_t h, int16_t *frames, size_t nframes,
 		assert_pthread_mutex_lock(&s->mutex);
 		if (s->done) {
 			assert_pthread_mutex_unlock(&s->mutex);
-			free(frames);
+			xp_audio_buffer_free(frames);
 			return false;
 		}
 		assert_pthread_mutex_unlock(&s->mutex);
@@ -2900,7 +2914,7 @@ xp_audio_play(const int16_t *frames, size_t nframes, const xp_audio_opts_t *opts
 	if (h < 0)
 		return -1;
 
-	copy = (int16_t *)malloc(nframes * S_FRAMESIZE);
+	copy = xp_audio_buffer_alloc(nframes);
 	if (!copy) {
 		xp_audio_close(h);
 		return -1;
@@ -3206,10 +3220,14 @@ xp_audio_drain(xp_audio_handle_t h)
 int16_t *
 xp_u8mono22k_to_s16stereo44k(const unsigned char *in, size_t in_bytes, size_t *nframes_out)
 {
-	size_t   out_frames = in_bytes * 2;
-	int16_t *out = malloc(out_frames * S_FRAMESIZE);
+	size_t   out_frames;
+	int16_t *out;
 	size_t   i;
 
+	if (in_bytes > SIZE_MAX / 2)
+		return NULL;
+	out_frames = in_bytes * 2;
+	out = xp_audio_buffer_alloc(out_frames);
 	if (!out)
 		return NULL;
 	for (i = 0; i < in_bytes; i++) {
@@ -3426,7 +3444,7 @@ bool xp_play_sample(unsigned char *sample, size_t size, bool background)
 	if (!converted)
 		return false;
 	ret = xp_play_sample16s(converted, nframes, background);
-	free(converted);
+	xp_audio_buffer_free(converted);
 	return ret;
 }
 #else
@@ -3459,7 +3477,7 @@ bool xp_play_sample(unsigned char *sample, size_t sample_size, bool background)
 		return false;
 
 	ret = xp_play_sample16s(converted, nframes, background);
-	free(converted);
+	xp_audio_buffer_free(converted);
 	return ret;
 }
 #endif
@@ -3524,7 +3542,7 @@ bool xptone(double freq, DWORD duration, DWORD shape)
 			;
 		sample_len++;
 		while (samples > S_RATE * 15 / 2) {
-			chunk = (int16_t *)malloc((size_t)sample_len * S_FRAMESIZE);
+			chunk = xp_audio_buffer_alloc((size_t)sample_len);
 			if (!chunk)
 				goto cleanup;
 			memcpy(chunk, scratch, (size_t)sample_len * S_FRAMESIZE);
@@ -3534,7 +3552,7 @@ bool xptone(double freq, DWORD duration, DWORD shape)
 		}
 	}
 	/* Final remainder. */
-	chunk = (int16_t *)malloc((size_t)samples * S_FRAMESIZE + S_FRAMESIZE);
+	chunk = xp_audio_buffer_alloc((size_t)samples + 1);
 	if (!chunk)
 		goto cleanup;
 	xptone_makewave(freq, chunk, samples, shape);

@@ -50,7 +50,7 @@ invalid_names="$(awk '
 			sub(/@.*/, "", name)
 			if (name ~ /^pthread_/ ||
 			    name == "xp_pthread_mutex_initializer" ||
-			    name ~ /^(getch|globi|kbhit|msclock|sem_trywait_block|unix_beep)$/ ||
+			    name ~ /^(asprintf|getch|getdelim|globi|kbhit|msclock|realloc_or_free|sem_trywait_block|stbuf_frommem|strndup|unix_beep|vasprintf)$/ ||
 			    name ~ /^_(echo_(off|on)|termios_(reset|setup))$/ ||
 			    name ~ /^(alsa_api|init_sdl_audio|pa_api|pu_api|sdl_fillbuf)$/ ||
 			    name ~ /^(xp_mixer_pull|xpbeep_load_sdl_funcs|xpbeep_sdl|xptone_close_locked)$/)

@@ -29,6 +29,16 @@
 	#define free(ptr)       HeapFree(GetProcessHeap(), /* flags: */ 0, ptr)
 #endif
 
+void* listAllocData(size_t size)
+{
+	return malloc(size);
+}
+
+void listFreeData(void* data)
+{
+	free(data);
+}
+
 link_list_t* listInit(link_list_t* list, int flags)
 {
 	if (list == NULL)
@@ -67,7 +77,7 @@ link_list_t* listInit(link_list_t* list, int flags)
 bool listFreeNodeData(list_node_t* node)
 {
 	if (node != NULL && node->data != NULL && !(node->flags & LINK_LIST_LOCKED)) {
-		free(node->data);
+		listFreeData(node->data);
 		node->data = NULL;
 		return true;
 	}
@@ -626,12 +636,12 @@ list_node_t* listAddNodeData(link_list_t* list, const void* data, size_t length,
 	list_node_t* node;
 	void*        buf;
 
-	if ((buf = malloc(length)) == NULL)
+	if ((buf = listAllocData(length)) == NULL)
 		return NULL;
 	memcpy(buf, data, length);
 
 	if ((node = listAddNodeWithFlags(list, buf, tag, LINK_LIST_MALLOC, after)) == NULL) {
-		free(buf);
+		listFreeData(buf);
 		return NULL;
 	}
 
@@ -646,11 +656,12 @@ list_node_t* listAddNodeString(link_list_t* list, const char* str, list_node_tag
 	if (str == NULL)
 		return NULL;
 
-	if ((buf = strdup(str)) == NULL)
+	if ((buf = (char*)listAllocData(strlen(str) + 1)) == NULL)
 		return NULL;
+	strcpy(buf, str);
 
 	if ((node = listAddNodeWithFlags(list, buf, tag, LINK_LIST_MALLOC, after)) == NULL) {
-		free(buf);
+		listFreeData(buf);
 		return NULL;
 	}
 

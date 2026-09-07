@@ -159,6 +159,19 @@ endif()
 An audio-component mismatch is reported before installed targets are imported,
 so a fallback can create the normal xpdev target names without collisions.
 
+## Memory ownership
+
+Heap allocations that cross an XPDev shared-library boundary must be released
+or transferred through the API family that created them. This is required on
+Windows when a DLL and its caller use separate CRT instances, and when XPDev
+objects are linked into and re-exported through another DLL such as
+`sbbs.dll`. Direct static-library consumers whose objects all use a compatible
+CRT may continue using ordinary `malloc()` where the documented legacy APIs
+permit it.
+
+See [HEAP-OWNERSHIP.md](HEAP-OWNERSHIP.md) for the complete ownership matrix,
+family-specific release functions, and the Synchronet migration checklist.
+
 ## License
 
 The included libraries are distributed under the GNU Library General Public

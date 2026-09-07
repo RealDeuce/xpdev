@@ -28,6 +28,7 @@
 #include "dirwrap.h"    /* fexist */
 #include "filewrap.h"   /* chsize */
 #include "netwrap.h"
+#include "named_str_list.h"
 
 #if defined(_WIN32)
         #define QSORT_CALLBACK_TYPE __cdecl
@@ -1306,21 +1307,7 @@ str_list_t iniFreeStringList(str_list_t list)
 
 named_string_t** iniFreeNamedStringList(named_string_t** list)
 {
-	ulong i;
-
-	if (list == NULL)
-		return NULL;
-
-	for (i = 0; list[i] != NULL; i++) {
-		if (list[i]->name != NULL)
-			free(list[i]->name);
-		if (list[i]->value != NULL)
-			free(list[i]->value);
-		free(list[i]);
-	}
-
-	free(list);
-	return NULL;
+	return namedStrListFree(list);
 }
 
 static str_list_t ini_read_section_list(FILE* fp, const char* prefix, bool include_dupes)
@@ -2626,6 +2613,11 @@ unsigned* parseEnumList(const char* values, const char* sep, str_list_t names, u
 	return enum_list;
 }
 
+void iniFreeEnumList(unsigned* list)
+{
+	free(list);
+}
+
 unsigned iniReadEnum(FILE* fp, const char* section, const char* key, str_list_t names, unsigned deflt)
 {
 	char  buf[INI_MAX_VALUE_LEN];
@@ -2916,6 +2908,11 @@ int* parseIntList(const char* values, const char* sep, unsigned* count)
 	strListFree(&list);
 
 	return int_list;
+}
+
+void iniFreeIntList(int* list)
+{
+	free(list);
 }
 
 int* iniGetIntList(str_list_t list, const char* section, const char* key

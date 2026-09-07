@@ -59,25 +59,6 @@ strnlen(const char *s, size_t maxlen)
 }
 #endif
 
-#ifdef _WIN32
-/* From FreeBSD */
-char *
-strndup(const char *str, size_t maxlen)
-{
-	char * copy;
-	size_t len;
-
-	len = strnlen(str, maxlen);
-	copy = malloc(len + 1);
-	if (copy != NULL) {
-		(void)memcpy(copy, str, len);
-		copy[len] = '\0';
-	}
-
-	return copy;
-}
-#endif
-
 #if defined(__EMSCRIPTEN__)
 char *
 strdup(const char *str)

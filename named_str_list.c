@@ -77,3 +77,69 @@ namedStrListFindName(named_string_t **list, const char *tmpn)
 	}
 	return NULL;
 }
+
+static bool
+namedStrListSetField(char **field, const char *value)
+{
+	char *replacement;
+
+	if (field == NULL || value == NULL)
+		return false;
+	replacement = strdup(value);
+	if (replacement == NULL)
+		return false;
+	free(*field);
+	*field = replacement;
+	return true;
+}
+
+bool
+namedStrListSetName(named_string_t *entry, const char *name)
+{
+	return entry != NULL && namedStrListSetField(&entry->name, name);
+}
+
+bool
+namedStrListSetValue(named_string_t *entry, const char *value)
+{
+	return entry != NULL && namedStrListSetField(&entry->value, value);
+}
+
+bool
+namedStrListReplace(named_string_t *entry, const char *name, const char *value)
+{
+	char *new_name;
+	char *new_value;
+
+	if (entry == NULL || name == NULL || value == NULL)
+		return false;
+	new_name = strdup(name);
+	if (new_name == NULL)
+		return false;
+	new_value = strdup(value);
+	if (new_value == NULL) {
+		free(new_name);
+		return false;
+	}
+	free(entry->name);
+	free(entry->value);
+	entry->name = new_name;
+	entry->value = new_value;
+	return true;
+}
+
+named_string_t **
+namedStrListFree(named_string_t **list)
+{
+	size_t i;
+
+	if (list == NULL)
+		return NULL;
+	for (i = 0; list[i] != NULL; ++i) {
+		free(list[i]->name);
+		free(list[i]->value);
+		free(list[i]);
+	}
+	free(list);
+	return NULL;
+}

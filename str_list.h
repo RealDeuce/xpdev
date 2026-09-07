@@ -35,6 +35,16 @@ extern "C" {
 
 typedef char** str_list_t;
 
+/* Allocate/free an individual string that may be owned or returned by this
+ * family across a shared-library boundary.  size is the allocation size in
+ * bytes, including any space required for the terminating NUL. */
+DLLEXPORT char*			strListAllocString(size_t size);
+DLLEXPORT void			strListFreeString(char* str);
+
+/* Free only a list's pointer vector.  Intended for a retired source vector
+ * after strListMerge(), whose strings are now owned by the destination. */
+DLLEXPORT void			strListFreeContainer(str_list_t list);
+
 /* Returns an allocated and terminated string list */
 DLLEXPORT str_list_t	strListInit(void);
 
@@ -57,7 +67,8 @@ DLLEXPORT size_t		strListAppendList(str_list_t*, const str_list_t append_list);
 /* Append a malloc'd formatted string to the end of the list */
 DLLEXPORT char*			strListAppendFormat(str_list_t* list, const char* format, ...);
 
-/* Adds a string (without alloc/duplication) to the end of a string list */
+/* Adds a string without duplication.  If XPDev may later free or replace the
+ * string across a DLL boundary, it must come from strListAllocString(). */
 DLLEXPORT char*			strListAnnex(str_list_t*, const char* str, size_t index);
 
 /* Inserts a string into the list at a specific index */
@@ -71,7 +82,8 @@ DLLEXPORT size_t		strListInsertList(str_list_t*, const str_list_t append_list, s
 /* Insert a malloc'd formatted string into the list */
 DLLEXPORT char*			strListInsertFormat(str_list_t* list, size_t index, const char* format, ...);
 
-/* Remove a string at a specific index */
+/* Remove a string at a specific index.  Library-owned results must be
+ * released with strListFreeString(). */
 DLLEXPORT char*			strListRemove(str_list_t*, size_t index);
 DLLEXPORT bool			strListFastRemove(str_list_t, size_t index, size_t count);
 
@@ -117,7 +129,8 @@ DLLEXPORT str_list_t	strListSplitCopy(str_list_t*, const char* str, const char* 
 /* into multiple (possibly empty) strings, separated by one of the delimit characters */
 DLLEXPORT str_list_t	strListDivide(str_list_t*, char* str, const char* delimit);
 
-/* Merge 2 string lists (no copying of string data) */
+/* Merge 2 string lists (no copying of string data).  The source pointer
+ * vector remains allocated and may be released with strListFreeContainer(). */
 DLLEXPORT size_t		strListMerge(str_list_t*, str_list_t append_list);
 
 /* Create a single delimited string from the specified list */

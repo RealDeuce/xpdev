@@ -33,42 +33,6 @@
 #include "xpprintf.h"
 #include "gen_defs.h"
 
-#if defined(NEEDS_VASPRINTF)
-int vasprintf(char **strptr, const char *format, va_list va)
-{
-	va_list va2;
-	int     ret;
-
-	if (strptr == NULL)
-		return -1;
-	va_copy(va2, va);
-	ret = _vscprintf(format, va);
-	*strptr = (char *)malloc(ret + 1);
-	if (*strptr == NULL) {
-		va_end(va2);
-		return -1;
-	}
-	ret = vsprintf(*strptr, format, va2);
-	va_end(va2);
-	return ret;
-}
-#endif
-
-#if defined(NEEDS_ASPRINTF)
-int asprintf(char **strptr, const char *format, ...)
-{
-	va_list va;
-	int     ret;
-
-	if (strptr == NULL)
-		return -1;
-	va_start(va, format);
-	ret = vasprintf(strptr, format, va);
-	va_end(va);
-	return ret;
-}
-#endif
-
 /* Maximum length of a format specifier including the % */
 #define MAX_FORMAT_LEN  256
 

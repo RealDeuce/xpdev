@@ -16,15 +16,21 @@
 #endif
 
 #include <stddef.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "gen_defs.h"
 #include "wrapdll.h"
 
+typedef void* (*stbuf_realloc_fn)(void*, size_t);
+typedef void (*stbuf_free_fn)(void*);
+
 struct stbuf_raw {
 	size_t   sz;      // Size of the buffer
 	size_t   len;     // Length of the buffer contents
 	bool     dynamic; // Can be resized via realloc()
+	stbuf_realloc_fn realloc_fn; // Allocator that created this buffer
+	stbuf_free_fn    free_fn;
 	char     buf[];   // Buffer data
 };
 
@@ -32,6 +38,8 @@ typedef struct stbuf_s {
 	const size_t sz;      // Size of the buffer (number of bytes it can hold)
 	const size_t len;     // Length of the buffer contents
 	const bool   dynamic; // Can be resized via realloc()
+	stbuf_realloc_fn const realloc_fn;
+	stbuf_free_fn const    free_fn;
 	const char   buf[];   // Buffer data
 } *STBUF_RESTRICT stbuf;
 
@@ -80,17 +88,38 @@ DLLEXPORT bool stbuf_atleast(stbuf *buf, size_t newsz);
  */
 DLLEXPORT bool stbuf_lipo(stbuf *buf);
 
-/*
- * Creates an empty stbuf in arbitrary memory mem where the memory block
- * size is sz.
- * If allocated is true, mem can be passed to realloc() by the functions,
- * and the address of mem changed. If allocated is false, the memory will
- * not be changed and mem will remain valid.
- */
-DLLEXPORT stbuf stbuf_frommem(void *mem, size_t sz, bool allocated);
+static inline void* xpdev_stbuf_realloc_local(void* mem, size_t size)
+{
+	return realloc(mem, size);
+}
+
+static inline void xpdev_stbuf_free_local(void* mem)
+{
+	free(mem);
+}
+
+/* Creates an empty stbuf in arbitrary memory.  The inline implementation
+ * captures the allocating module's realloc/free entry points so later DLL
+ * calls continue to use the originating heap. */
+static inline stbuf xpdev_stbuf_frommem_local(void *mem, size_t sz, bool allocated)
+{
+	struct stbuf_raw *stb = (struct stbuf_raw*)mem;
+
+	if (mem == NULL || sz < STBUF_OFFSET + 1)
+		return NULL;
+	stb->sz = sz - STBUF_OFFSET - 1;
+	stb->len = 0;
+	stb->dynamic = allocated;
+	stb->realloc_fn = allocated ? xpdev_stbuf_realloc_local : NULL;
+	stb->free_fn = allocated ? xpdev_stbuf_free_local : NULL;
+	stb->buf[0] = 0;
+	return (stbuf)mem;
+}
+#define stbuf_frommem(mem, sz, allocated) \
+	xpdev_stbuf_frommem_local((mem), (sz), (allocated))
 
 /*
- * free()s an stbuf
+ * Releases a dynamic stbuf with the allocator that created it.
  */
 DLLEXPORT void stbuf_free(stbuf buf);
 

@@ -27,6 +27,7 @@
 
 #include <sys/stat.h>	/* S_IREAD and S_IWRITE (for use with sopen) */
 #include <stdio.h>
+#include <stdlib.h>
 
 #if defined(__unix__)
 	#include <unistd.h>	/* read, write, close, ftruncate, lseek, etc. */
@@ -164,7 +165,55 @@ DLLEXPORT int	xp_lockfile(int fd, off_t pos, off_t len, bool block);
 #endif
 
 #if defined(NEEDS_GETDELIM)
-	DLLEXPORT ssize_t	getdelim(char **linep, size_t *linecapp, int delimiter, FILE *stream);
+	static inline int xpdev_getdelim_expand_local(char **linep, size_t needed, size_t *linecapp)
+	{
+		char* newline;
+		size_t newcap;
+
+		if (needed <= *linecapp)
+			return 0;
+		newcap = *linecapp != 0 ? *linecapp : 128;
+		while (newcap < needed) {
+			if (newcap > SIZE_MAX / 2) {
+				newcap = needed;
+				break;
+			}
+			newcap *= 2;
+		}
+		newline = (char*)realloc(*linep, newcap);
+		if (newline == NULL)
+			return -1;
+		*linep = newline;
+		*linecapp = newcap;
+		return 0;
+	}
+
+	static inline ssize_t xpdev_getdelim_local(char **linep, size_t *linecapp, int delimiter, FILE *stream)
+	{
+		size_t linelen = 0;
+		int ch;
+
+		if (linep == NULL || linecapp == NULL || stream == NULL)
+			return -1;
+		if (*linep == NULL)
+			*linecapp = 0;
+		for (;;) {
+			ch = fgetc(stream);
+			if (ch == EOF)
+				break;
+			if (linelen > SIZE_MAX - 2
+			    || xpdev_getdelim_expand_local(linep, linelen + 2, linecapp) != 0)
+				return -1;
+			(*linep)[linelen++] = (char)ch;
+			if (ch == delimiter)
+				break;
+		}
+		if (xpdev_getdelim_expand_local(linep, linelen + 1, linecapp) != 0)
+			return -1;
+		(*linep)[linelen] = '\0';
+		return linelen == 0 ? -1 : (ssize_t)linelen;
+	}
+	#define getdelim xpdev_getdelim_local
 #endif
 
 #if !defined(__BORLANDC__) && defined(__unix__)

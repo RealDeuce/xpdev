@@ -25,6 +25,21 @@
 #include "str_list.h"
 #include "xpprintf.h"
 
+char* strListAllocString(size_t size)
+{
+	return (char*)malloc(size);
+}
+
+void strListFreeString(char* str)
+{
+	free(str);
+}
+
+void strListFreeContainer(str_list_t list)
+{
+	free(list);
+}
+
 str_list_t strListInit(void)
 {
 	str_list_t list;
@@ -178,7 +193,7 @@ bool strListDelete(str_list_t* list, size_t index)
 	if ((str = strListRemove(list, index)) == NULL)
 		return false;
 
-	free(str);
+	strListFreeString(str);
 
 	return true;
 }
@@ -192,7 +207,7 @@ bool strListFastDelete(str_list_t list, size_t index, size_t count)
 			return false;
 
 	for (i = 0; i < count; ++i)
-		free(list[index + i]);
+		strListFreeString(list[index + i]);
 
 	return strListFastRemove(list, index, count);
 }
@@ -202,7 +217,7 @@ void strListFastDeleteAll(str_list_t list)
 	size_t i;
 
 	for (i = 0; list[i] != NULL; ++i)
-		free(list[i]);
+		strListFreeString(list[i]);
 	list[0] = NULL;
 }
 
@@ -243,7 +258,7 @@ size_t strListModifyEach(const str_list_t list, char*(modify(size_t, char*, void
 		str = strdup(str);
 		if (str == NULL)
 			break;
-		free(list[i]);
+		strListFreeString(list[i]);
 		list[i] = str;
 	}
 	return i;

@@ -211,6 +211,11 @@ void* msgQueueFind(msg_queue_t* q, const void* data, size_t length)
 	return listRemoveNode(list, node, /* Free Data? */ false);
 }
 
+void msgQueueFreeMessage(void* message)
+{
+	listFreeData(message);
+}
+
 list_node_t* msgQueueFirstNode(msg_queue_t* q)
 {
 	return listFirstNode(msgQueueReadList(q));
