@@ -22,6 +22,20 @@
 #include <errno.h>
 #include "semwrap.h"
 
+/* Older Windows CRTs, including Borland's, do not define every POSIX errno
+ * value used by the semaphore API.  Keep the precise value where it exists
+ * and otherwise use the closest errno understood by that CRT. */
+#if defined(EOVERFLOW)
+	#define XPDEV_SEM_EOVERFLOW EOVERFLOW
+#else
+	#define XPDEV_SEM_EOVERFLOW ERANGE
+#endif
+#if defined(ENOSYS)
+	#define XPDEV_SEM_ENOSYS ENOSYS
+#else
+	#define XPDEV_SEM_ENOSYS EINVAL
+#endif
+
 #if defined(__unix__)
 
 #include <sys/time.h>   /* timespec */
@@ -51,20 +65,6 @@ xp_sem_trywait_block(sem_t *sem, uint32_t timeout)
 #elif defined(_WIN32)
 
 #include <limits.h>     /* INT_MAX */
-
-/* Older Windows CRTs, including Borland's, do not define every POSIX errno
- * value used by the semaphore API.  Keep the precise value where it exists
- * and otherwise use the closest errno understood by that CRT. */
-#if defined(EOVERFLOW)
-	#define XPDEV_SEM_EOVERFLOW EOVERFLOW
-#else
-	#define XPDEV_SEM_EOVERFLOW ERANGE
-#endif
-#if defined(ENOSYS)
-	#define XPDEV_SEM_ENOSYS ENOSYS
-#else
-	#define XPDEV_SEM_ENOSYS EINVAL
-#endif
 
 static int
 sem_error(int* error_out, int error)
