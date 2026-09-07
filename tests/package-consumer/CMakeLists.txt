@@ -204,6 +204,20 @@ if(WIN32)
 	add_test(NAME xpdev_windows_wrapper_consumer
 		COMMAND xpdev_windows_wrapper_consumer)
 elseif(UNIX)
+	set(xpdev_opaque_event_source
+		"${CMAKE_CURRENT_BINARY_DIR}/opaque_event.c")
+	file(WRITE "${xpdev_opaque_event_source}"
+		"#include <xpdev/eventwrap.h>\nint value = sizeof(*((xpevent_t)0));\n")
+	try_compile(xpdev_exposed_event
+		"${CMAKE_CURRENT_BINARY_DIR}/opaque_event_build"
+		"${xpdev_opaque_event_source}"
+		CMAKE_FLAGS "-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY"
+		LINK_LIBRARIES xpdev::shared)
+	if(xpdev_exposed_event)
+		message(FATAL_ERROR
+			"eventwrap.h exposes the Unix xpevent implementation")
+	endif()
+
 	add_executable(xpdev_event_consumer consumer_event.c)
 	target_link_libraries(xpdev_event_consumer PRIVATE xpdev::shared)
 	add_test(NAME xpdev_event_consumer COMMAND xpdev_event_consumer)

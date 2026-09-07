@@ -26,11 +26,10 @@
 	#error Include eventwrap.h instead
 #endif
 
-#include <pthread.h>
 #include "gen_defs.h"
 #include "wrapdll.h"
 
-/* Opaque type definition. */
+/* The Unix implementation is private to the XPDev library. */
 struct xpevent;
 typedef struct xpevent *xpevent_t;
 
@@ -45,18 +44,6 @@ DLLEXPORT DWORD       WaitForEvent(xpevent_t event, DWORD ms);
 #if defined(__cplusplus)
 }
 #endif
-
-struct xpevent {
-#define EVENT_MAGIC       ((uint32_t) 0x09fa4014)
-	uint32_t magic;
-	pthread_mutex_t lock;
-	pthread_cond_t gtzero;
-	BOOL value;
-	BOOL mreset;
-	DWORD nwaiters;
-	void *cbdata;
-	BOOL (*verify)(void *);
-};
 
 #define INFINITE    ((DWORD)(-1))
 enum {
