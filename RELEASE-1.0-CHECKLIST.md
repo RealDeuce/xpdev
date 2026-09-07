@@ -20,11 +20,10 @@ export/baseline check.
 
 ## Current hard blockers
 
-- [ ] **P0: Restore a green build on `main`.** Commit `26140058b` passes the
-  normal MSVC, both MinGW, macOS, and ELF jobs, but the installed-package test
-  fails for the MSVC static-CRT (`/MT`) DLL configuration. The ownership test
-  itself passes; `xpdev_windows_wrapper_consumer` fails while checking the
-  semaphore error contract.
+- [x] **P0: Restore a green build on `main`.** Commit `f45ce83c0` passes normal
+  MSVC, static-CRT (`/MT`) MSVC, both MinGW thread models, macOS, and ELF. The
+  Windows semaphore wrappers now transfer error values out of the DLL and set
+  `errno` in caller-local inline code.
 - [ ] **P0: Decide how Windows DLL APIs report `errno`.** A DLL and application
   built with separate static CRTs have different thread-local `errno` storage.
   Assigning `errno` inside `xpdev-1.dll` therefore cannot satisfy a caller that
@@ -107,10 +106,10 @@ export/baseline check.
   shared-library API must be exported everywhere it is supported; private,
   fallback, and platform-native symbols must be absent. Conditional APIs must
   be listed with their precise platform rules.
-- [ ] **P0: Extend the MinGW Win32-thread export test to cover all ownership
-  APIs and caller-local forbidden symbols.** The POSIX-thread MinGW job has
-  these checks; the Win32-thread job currently checks only its thread/rwlock
-  subset and older forbidden names.
+- [x] **P0: Extend the MinGW Win32-thread export test to cover all ownership
+  APIs and caller-local forbidden symbols.** Both MinGW thread-model jobs now
+  verify the ownership API and Windows semaphore implementation exports while
+  rejecting caller-local and legacy semaphore names.
 - [ ] **P0: Capture an ABI baseline from the release candidate.** Use an ABI
   comparison tool where practical and archive the export/type reports so 1.1
   can be checked against the actual 1.0 binaries rather than reconstructed
