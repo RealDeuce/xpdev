@@ -182,6 +182,18 @@ Both core modules expose `audio_enabled` and `audio_backends` variables for
 non-CMake build systems.  Paths are relative to the installed `.pc` file,
 including when installation uses `cmake --install --prefix`.
 
+## API families
+
+XPDev contains four linkable library families: the core portability library
+and the opt-in comio, hash, and encode components. Within the core library,
+interfaces are further divided into logical families such as string lists,
+INI data, synchronization, sockets, audio, and allocating formatters. Those
+logical boundaries determine object, memory, and error contracts even when the
+functions reside in the same shared library.
+
+See [API-FAMILIES.md](API-FAMILIES.md) for the library and header map, the
+purpose of each family, and the rules for conditional compatibility surfaces.
+
 ## Memory ownership
 
 Heap allocations that cross an XPDev shared-library boundary must be released

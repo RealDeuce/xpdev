@@ -7,6 +7,10 @@ separate static CRTs have separate thread-local `errno` storage. An assignment
 to `errno` in the DLL is therefore invisible to a caller that reads its own
 `errno`.
 
+See [API-FAMILIES.md](API-FAMILIES.md) for the broader map of XPDev's linkable
+libraries and logical interfaces. The families below are grouped specifically
+by error behavior, so some broader interfaces are split into multiple rows.
+
 The audit distinguishes three cases:
 
 1. **Contractual use:** failure is reported as `-1`, `NULL`, or `FALSE`, and

@@ -5,6 +5,10 @@ When a shared library may resize or release memory, that memory must originate
 from the same API family. When a shared library returns owned memory, callers
 must use that family's release function.
 
+An API family is a group of related types and operations with a common
+contract, not necessarily a separately linked library. See
+[API-FAMILIES.md](API-FAMILIES.md) for the family map.
+
 This rule is observable on Windows when a DLL and its caller use separate
 static CRT instances. It also applies when XPDev objects are linked into and
 re-exported from a larger DLL. A direct static-library consumer whose objects
