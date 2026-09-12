@@ -33,6 +33,9 @@ jobs:
       - name: Install history projection tool
         run: pipx install git-filter-repo==2.47.0
 
+      - name: Test upstream checkpoint normalization
+        run: ./.github/scripts/test-sync-upstream.sh
+
       - name: Fetch, project, and merge upstream
         run: ./.github/scripts/sync-upstream.sh
 

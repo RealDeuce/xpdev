@@ -7,6 +7,9 @@ upstream_branch="${UPSTREAM_BRANCH:-master}"
 upstream_remote="${UPSTREAM_REMOTE:-upstream-sbbs}"
 xpdev_prefix="src/xpdev"
 filter_repo_version="2.47.0"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+. "${script_dir}/sync-upstream-lib.sh"
 
 fail() {
 	printf '::error title=Synchronet upstream sync failed::%s\n' "$*" >&2
@@ -53,17 +56,21 @@ if test -n "$last_xpdev_sync"; then
 		"$last_xpdev_sync")"
 fi
 
+xpdev_checkpoint=
 if test -n "${last_upstream_source:-}" \
 		&& test -n "${last_xpdev_split:-}" \
 		&& git cat-file -e "${last_xpdev_split}^{commit}" 2>/dev/null \
-		&& git merge-base --is-ancestor "$last_upstream_source" "$upstream_ref"; then
+		&& git merge-base --is-ancestor "$last_upstream_source" "$upstream_ref" \
+		&& xpdev_checkpoint="$(normalize_xpdev_checkpoint \
+			"$last_upstream_source" "$last_xpdev_split" \
+			"$xpdev_prefix")"; then
 	printf 'Continuing XPDev projection from upstream %s / split %s...\n' \
-		"$(git rev-parse --short=12 "$last_upstream_source")" \
+		"$(git rev-parse --short=12 "$xpdev_checkpoint")" \
 		"$(git rev-parse --short=12 "$last_xpdev_split")"
 	marker_message="$(printf '%s\n\n%s\n%s\n' \
 		'Temporary incremental XPDev projection marker' \
 		"git-subtree-dir: ${xpdev_prefix}" \
-		"git-subtree-mainline: ${last_upstream_source}" \
+		"git-subtree-mainline: ${xpdev_checkpoint}" \
 		"git-subtree-split: ${last_xpdev_split}")"
 	xpdev_marker="$(printf '%s\n' "$marker_message" \
 		| git commit-tree "${upstream_ref}^{tree}" -p "$upstream_ref")"
