@@ -27,6 +27,7 @@
 #include <string.h>		/* strerror() */
 #include <time.h>		/* clock_t */
 #include "gen_defs.h"	/* ulong */
+#include "str_list.h"	/* str_list_t */
 #include "wrapdll.h"	/* DLLEXPORT and */
 
 #if defined(__unix__)
@@ -285,6 +286,20 @@ DLLEXPORT char*		truncnl(char* str);
 
 /* Re-entrant version of strerror() */
 DLLEXPORT char*		safe_strerror(int errnum, char* buf, size_t buflen);
+
+/* system(), without the console window it pops up on Windows */
+DLLEXPORT int		xp_system(const char* cmdline);
+
+/* popen(cmd, "r") read to EOF: captured output lines appended to *lines	*/
+/* (a str_list_t initialized to NULL), functional on Windows too			*/
+DLLEXPORT int		xp_popen(const char* cmdline, str_list_t* lines);
+
+/* popen(), portably: connects a stream to the command's standard			*/
+/* output ("r"), its input ("w") or both ("r+"), 'b' appended for binary.	*/
+/* *child receives a token for xp_pipe_close(), which closes the stream		*/
+/* and waits for the command to exit, returning its status as pclose() does	*/
+DLLEXPORT FILE*		xp_pipe_open(const char* cmdline, const char* mode, intptr_t* child);
+DLLEXPORT int		xp_pipe_close(FILE* fp, intptr_t child);
 
 /*********************/
 /* Utility Functions */

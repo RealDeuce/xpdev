@@ -30,12 +30,16 @@
 #include <math.h>       /* fmod */
 
 #include "strwrap.h"        /* strdup */
+#include "str_list.h"       /* strListPush() */
 #include "ini_file.h"
 
 #if defined(__unix__)
 	#include <sys/ioctl.h>      /* ioctl() */
+	#include <sys/socket.h>     /* socketpair() */
+	#include <sys/wait.h>       /* waitpid() */
 	#include <signal.h>
 #elif defined(_WIN32)
+	#include <io.h>     /* _open_osfhandle() */
 	#include <windows.h>
 	#include <lm.h>     /* NetWkstaGetInfo() */
 	#if WINVER >= 0x0600 // _WIN32_WINNT_VISTA
@@ -1161,4 +1165,428 @@ char* safe_strerror(int errnum, char *buf, size_t buflen)
 	strerror_r(errnum, buf, buflen);
 #endif
 	return buf;
+}
+#ifdef _WIN32
+/* GetStdHandle(), normalized: NULL when the process has no such handle */
+static HANDLE std_handle(DWORD id)
+{
+	HANDLE h = GetStdHandle(id);
+
+	return h == INVALID_HANDLE_VALUE ? NULL : h;
+}
+#endif
+
+/****************************************************************************/
+/* Like system(), but without the console window that Windows creates for	*/
+/* a command-line run by a process with no console of its own (a service,	*/
+/* or a GUI app like sbbsctrl): the shell allocates one, so every command	*/
+/* flashes a window onto the sysop's desktop.								*/
+/* A caller that does have a console keeps using system(), whose child		*/
+/* inherits that console (and thus still writes its output there).			*/
+/****************************************************************************/
+int xp_system(const char* cmdline)
+{
+#ifdef _WIN32
+	if (GetConsoleWindow() == NULL) {
+		/* Declare before the first statement: Borland C++ (sbbsctrl/useredit) is C89. */
+		const char*         comspec;
+		char*               cmd;
+		size_t              len;
+		STARTUPINFOA        si;
+		PROCESS_INFORMATION pi;
+		BOOL                success;
+		DWORD               exit_code = 0;
+
+		comspec = getenv("COMSPEC");
+		if (comspec == NULL)
+			comspec = "cmd.exe";
+		len = strlen(comspec) + strlen(cmdline) + 16;
+		cmd = malloc(len);
+		if (cmd == NULL)
+			return -1;
+		/* /S: cmd.exe strips the outermost quote-pair and runs the rest
+		   verbatim, so any quoting or redirection within survives. */
+		snprintf(cmd, len, "\"%s\" /S /C \"%s\"", comspec, cmdline);
+		memset(&si, 0, sizeof si);
+		si.cb = sizeof si;
+		si.hStdInput = std_handle(STD_INPUT_HANDLE);
+		si.hStdOutput = std_handle(STD_OUTPUT_HANDLE);
+		si.hStdError = std_handle(STD_ERROR_HANDLE);
+		/* Redirected (rather than absent) standard handles have to be passed
+		   along, or the new console would swallow output that system() would
+		   have written to the caller's file or pipe. */
+		if (si.hStdInput != NULL || si.hStdOutput != NULL || si.hStdError != NULL)
+			si.dwFlags = STARTF_USESTDHANDLES;
+		memset(&pi, 0, sizeof pi);
+		/* Inherit handles, as system() does: a command-line can name a handle
+		   for the child to pick up (services.cpp hands a native service its
+		   socket that way). */
+		success = CreateProcessA(comspec, cmd, NULL, NULL, /* inherit: */ TRUE
+		                         , CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
+		free(cmd);
+		if (!success)
+			return -1;
+		WaitForSingleObject(pi.hProcess, INFINITE);
+		GetExitCodeProcess(pi.hProcess, &exit_code);
+		CloseHandle(pi.hThread);
+		CloseHandle(pi.hProcess);
+		return (int)exit_code;
+	}
+#endif
+	return system(cmdline);
+}
+
+/****************************************************************************/
+/* Run a command and capture its standard output, appending one string per	*/
+/* line (the new-line included, as fgets() leaves it) to *lines, a string	*/
+/* list the caller initializes to NULL and frees with strListFree().		*/
+/* Returns the command's exit status (0 on success), or -1 if it could not	*/
+/* be run at all.															*/
+/*																			*/
+/* This is popen(cmd, "r"), read to EOF, pclose() -- except on Windows,		*/
+/* where it doesn't go through _popen(): that requires the calling process	*/
+/* to have a console of its own, and hangs (or fails) in one that doesn't,	*/
+/* e.g. a service or a GUI app.  Nor does it create a console window.		*/
+/****************************************************************************/
+int xp_popen(const char* cmdline, str_list_t* lines)
+{
+#ifdef _WIN32
+	/* Declare before the first statement: Borland C++ (sbbsctrl/useredit) is C89. */
+	SECURITY_ATTRIBUTES sa;
+	STARTUPINFOA        si;
+	PROCESS_INFORMATION pi;
+	HANDLE              rd;
+	HANDLE              wr;
+	const char*         comspec;
+	char*               cmd;
+	size_t              len;
+	BOOL                success;
+	DWORD               exit_code = -1;
+	char*               output = NULL;
+	size_t              output_len = 0;
+	char                buf[4000];
+	DWORD               rd_len;
+	char*               p;
+
+	memset(&sa, 0, sizeof sa);
+	sa.nLength = sizeof sa;
+	sa.bInheritHandle = TRUE;   /* the child needs the write end */
+
+	if (!CreatePipe(&rd, &wr, &sa, 0))
+		return -1;
+	/* ... but not the read end, or the pipe would never report EOF. */
+	SetHandleInformation(rd, HANDLE_FLAG_INHERIT, 0);
+
+	comspec = getenv("COMSPEC");
+	if (comspec == NULL)
+		comspec = "cmd.exe";
+	len = strlen(comspec) + strlen(cmdline) + 16;
+	cmd = malloc(len);
+	if (cmd == NULL) {
+		CloseHandle(rd);
+		CloseHandle(wr);
+		return -1;
+	}
+	/* /S: cmd.exe strips the outermost quote-pair and runs the rest
+	   verbatim, so any quoting or redirection within survives. */
+	snprintf(cmd, len, "\"%s\" /S /C \"%s\"", comspec, cmdline);
+
+	memset(&si, 0, sizeof si);
+	si.cb = sizeof si;
+	si.dwFlags = STARTF_USESTDHANDLES;
+	si.hStdInput = std_handle(STD_INPUT_HANDLE);
+	si.hStdOutput = wr;
+	/* popen(,"r") captures stdout only, leaving stderr to the parent's. */
+	si.hStdError = std_handle(STD_ERROR_HANDLE);
+	memset(&pi, 0, sizeof pi);
+	success = CreateProcessA(comspec, cmd, NULL, NULL, /* inherit: */ TRUE
+	                         , CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
+	free(cmd);
+	CloseHandle(wr);    /* the child holds the only write end now */
+	if (!success) {
+		CloseHandle(rd);
+		return -1;
+	}
+
+	while (ReadFile(rd, buf, sizeof buf, &rd_len, NULL) && rd_len > 0) {
+		char* np = realloc_or_free(output, output_len + rd_len + 1);
+		if (np == NULL) {
+			output = NULL;      /* realloc_or_free() already freed it */
+			output_len = 0;
+			break;
+		}
+		output = np;
+		memcpy(output + output_len, buf, rd_len);
+		output_len += rd_len;
+		output[output_len] = '\0';
+	}
+	CloseHandle(rd);
+
+	WaitForSingleObject(pi.hProcess, INFINITE);
+	GetExitCodeProcess(pi.hProcess, &exit_code);
+	CloseHandle(pi.hThread);
+	CloseHandle(pi.hProcess);
+
+	p = output;
+	while (p != NULL && *p != '\0') {
+		char* eol = strchr(p, '\n');
+		char  save;
+
+		if (eol == NULL) {
+			strListPush(lines, p);
+			break;
+		}
+		/* Keep the new-line with its line, then put back the first char of
+		   the next one. */
+		save = *(eol + 1);
+		*(eol + 1) = '\0';
+		strListPush(lines, p);
+		*(eol + 1) = save;
+		p = eol + 1;
+	}
+	free(output);
+	return (int)exit_code;
+#else
+	FILE* fp = popen(cmdline, "r");
+	if (fp == NULL)
+		return -1;
+	char  buf[1024];
+	while (fgets(buf, sizeof buf, fp) != NULL)
+		strListPush(lines, buf);
+	return pclose(fp);
+#endif
+}
+
+#ifdef _WIN32
+
+#ifndef FILE_FLAG_FIRST_PIPE_INSTANCE    /* missing from the Borland SDK headers */
+	#define FILE_FLAG_FIRST_PIPE_INSTANCE   0x00080000
+#endif
+
+/****************************************************************************/
+/* Both ends of a bidirectional pipe.  An anonymous pipe is one-way, so the	*/
+/* read-and-write mode needs a named one.  The name is guessable, but		*/
+/* FILE_FLAG_FIRST_PIPE_INSTANCE keeps another process from creating it		*/
+/* first and the single instance keeps one from connecting after we have:	*/
+/* losing that race loses the pipe, it doesn't hand the command's standard	*/
+/* input and output to a stranger.											*/
+/****************************************************************************/
+static HANDLE duplex_pipe(HANDLE* child_end)
+{
+	static LONG         counter;
+	SECURITY_ATTRIBUTES sa;
+	char                name[128];
+	HANDLE              server;
+	HANDLE              client;
+
+	snprintf(name, sizeof name, "\\\\.\\pipe\\xp_pipe.%lu.%lu.%lu"
+	         , (unsigned long)GetCurrentProcessId()
+	         , (unsigned long)InterlockedIncrement(&counter)
+	         , (unsigned long)GetTickCount());
+	server = CreateNamedPipeA(name
+	                          , PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE
+	                          , PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT
+	                          , /* max instances: */ 1, 4096, 4096, 0, NULL);
+	if (server == INVALID_HANDLE_VALUE)
+		return NULL;
+	memset(&sa, 0, sizeof sa);
+	sa.nLength = sizeof sa;
+	sa.bInheritHandle = TRUE;   /* the child needs its end */
+	client = CreateFileA(name, GENERIC_READ | GENERIC_WRITE, 0, &sa, OPEN_EXISTING, 0, NULL);
+	if (client == INVALID_HANDLE_VALUE) {
+		CloseHandle(server);
+		return NULL;
+	}
+	*child_end = client;
+	return server;
+}
+#endif
+
+/****************************************************************************/
+/* Run a command with a stream connected to its standard input, its output	*/
+/* or both: mode "r" reads what the command writes, "w" writes what it		*/
+/* reads, "r+" does both.  Append 'b' for binary (no new-line translation).	*/
+/* The command's standard error is left as the caller's, as popen() does.	*/
+/* Returns NULL if the command could not be run.							*/
+/*																			*/
+/* *child receives a token to hand xp_pipe_close(), which closes the stream	*/
+/* and waits for the command to exit.										*/
+/*																			*/
+/* This is popen(), portably.  Neither platform's C library gives the whole	*/
+/* contract: Windows' _popen() requires the calling process to own a		*/
+/* console (a service or a GUI app like sbbsctrl does not) and pops up a	*/
+/* console window, while the bidirectional mode is a BSD extension that		*/
+/* glibc rejects with EINVAL.												*/
+/****************************************************************************/
+FILE* xp_pipe_open(const char* cmdline, const char* mode, intptr_t* child)
+{
+	BOOL both;
+	BOOL reading;
+
+	*child = 0;
+	if (cmdline == NULL || mode == NULL || (*mode != 'r' && *mode != 'w')) {
+		errno = EINVAL;
+		return NULL;
+	}
+	both = strchr(mode, '+') != NULL;
+	reading = both || *mode == 'r';
+#ifdef _WIN32
+	{
+		/* Declare before the first statement: Borland C++ (sbbsctrl/useredit) is C89. */
+		SECURITY_ATTRIBUTES sa;
+		STARTUPINFOA        si;
+		PROCESS_INFORMATION pi;
+		BOOL                binary = strchr(mode, 'b') != NULL;
+		HANDLE              ours = NULL;
+		HANDLE              theirs = NULL;
+		const char*         comspec;
+		const char*         fmode;
+		char*               cmd;
+		size_t              len;
+		BOOL                success;
+		int                 fd;
+		FILE*               fp;
+
+		if (both) {
+			if ((ours = duplex_pipe(&theirs)) == NULL)
+				return NULL;
+		}
+		else {
+			HANDLE rd;
+			HANDLE wr;
+
+			memset(&sa, 0, sizeof sa);
+			sa.nLength = sizeof sa;
+			sa.bInheritHandle = TRUE;   /* the child needs its end */
+			if (!CreatePipe(&rd, &wr, &sa, 0))
+				return NULL;
+			ours = reading ? rd : wr;
+			theirs = reading ? wr : rd;
+			/* ... but not our end, or the pipe would never report EOF. */
+			SetHandleInformation(ours, HANDLE_FLAG_INHERIT, 0);
+		}
+
+		comspec = getenv("COMSPEC");
+		if (comspec == NULL)
+			comspec = "cmd.exe";
+		len = strlen(comspec) + strlen(cmdline) + 16;
+		cmd = malloc(len);
+		if (cmd == NULL) {
+			CloseHandle(ours);
+			CloseHandle(theirs);
+			return NULL;
+		}
+		/* /S: cmd.exe strips the outermost quote-pair and runs the rest
+		   verbatim, so any quoting or redirection within survives. */
+		snprintf(cmd, len, "\"%s\" /S /C \"%s\"", comspec, cmdline);
+
+		memset(&si, 0, sizeof si);
+		si.cb = sizeof si;
+		si.dwFlags = STARTF_USESTDHANDLES;
+		si.hStdInput = (both || !reading) ? theirs : std_handle(STD_INPUT_HANDLE);
+		si.hStdOutput = reading ? theirs : std_handle(STD_OUTPUT_HANDLE);
+		si.hStdError = std_handle(STD_ERROR_HANDLE);
+		memset(&pi, 0, sizeof pi);
+		success = CreateProcessA(comspec, cmd, NULL, NULL, /* inherit: */ TRUE
+		                         , CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
+		free(cmd);
+		CloseHandle(theirs);    /* the child holds the only copy now */
+		if (!success) {
+			CloseHandle(ours);
+			return NULL;
+		}
+		CloseHandle(pi.hThread);
+		if ((fd = _open_osfhandle((intptr_t)ours, binary ? O_BINARY : O_TEXT)) == -1) {
+			CloseHandle(ours);
+			CloseHandle(pi.hProcess);
+			return NULL;
+		}
+		if (both)
+			fmode = binary ? "r+b" : "r+";
+		else if (reading)
+			fmode = binary ? "rb" : "r";
+		else
+			fmode = binary ? "wb" : "w";
+		if ((fp = fdopen(fd, fmode)) == NULL) {
+			close(fd);      /* closes the HANDLE with it */
+			CloseHandle(pi.hProcess);
+			return NULL;
+		}
+		*child = (intptr_t)pi.hProcess;
+		return fp;
+	}
+#else
+	if (!both)  /* popen() already handles the one-way modes everywhere */
+		return popen(cmdline, reading ? "r" : "w");
+	{
+		int   sv[2];
+		pid_t pid;
+		FILE* fp;
+
+		/* A pipe is one-way, so the bidirectional mode gets a socket pair,
+		   which is what the BSD popen() uses for it. */
+		if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) != 0)
+			return NULL;
+		fcntl(sv[0], F_SETFD, FD_CLOEXEC);  /* our end isn't the command's */
+		if ((pid = fork()) == 0) {
+			close(sv[0]);
+			dup2(sv[1], STDIN_FILENO);
+			dup2(sv[1], STDOUT_FILENO);
+			if (sv[1] > STDERR_FILENO)
+				close(sv[1]);
+			execl("/bin/sh", "sh", "-c", cmdline, (char*)NULL);
+			_exit(127);
+		}
+		close(sv[1]);
+		if (pid < 0) {
+			close(sv[0]);
+			return NULL;
+		}
+		if ((fp = fdopen(sv[0], "r+")) == NULL) {
+			close(sv[0]);
+			kill(pid, SIGKILL);
+			while (waitpid(pid, NULL, 0) < 0 && errno == EINTR)
+				;
+			return NULL;
+		}
+		*child = pid;
+		return fp;
+	}
+#endif
+}
+
+/****************************************************************************/
+/* Close a stream opened by xp_pipe_open() and wait for the command to		*/
+/* exit, returning its status as pclose() does (-1 if it could not be		*/
+/* waited for).																*/
+/****************************************************************************/
+int xp_pipe_close(FILE* fp, intptr_t child)
+{
+#ifdef _WIN32
+	HANDLE h = (HANDLE)child;
+	DWORD  exit_code = (DWORD)-1;
+
+	/* Close first: a command reading our stream has to see EOF before it can
+	   be expected to exit. */
+	if (fp != NULL)
+		fclose(fp);
+	if (h == NULL)
+		return -1;
+	WaitForSingleObject(h, INFINITE);
+	GetExitCodeProcess(h, &exit_code);
+	CloseHandle(h);
+	return (int)exit_code;
+#else
+	int status;
+
+	if (child == 0)     /* opened by popen() */
+		return pclose(fp);
+	if (fp != NULL)
+		fclose(fp);
+	while (waitpid((pid_t)child, &status, 0) < 0) {
+		if (errno != EINTR)
+			return -1;
+	}
+	return status;
+#endif
 }

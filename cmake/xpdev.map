@@ -471,6 +471,9 @@ XPDEV_1.0 {
 		xp_msclock;
 		xp_play_sample;
 		xp_play_sample16s;
+		xp_pipe_close;
+		xp_pipe_open;
+		xp_popen;
 		xp_printf_get_next;
 		xp_printf_get_type;
 		xp_pthread_mutex_init;
@@ -486,6 +489,7 @@ XPDEV_1.0 {
 		xp_sem_trywait_block;
 		xp_sem_unlink;
 		xp_sem_wait;
+		xp_system;
 		xp_termios_reset;
 		xp_termios_setup;
 		xp_timer;
